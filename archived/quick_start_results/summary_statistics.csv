@@ -1,0 +1,2 @@
+Method,Total Runs,Successful,Success Rate (%),Avg Time (s),Std Time (s),Avg Chain Length,Avg Max Chain,Avg Qubits Used
+minorminer,25,25,100.0,0.0029563426971435545,0.00509448354151837,1.4216555555555557,1.92,13.52
