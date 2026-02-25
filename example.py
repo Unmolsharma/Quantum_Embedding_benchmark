@@ -3,7 +3,7 @@ from qeanalysis import BenchmarkAnalysis
 
 
 bench = EmbeddingBenchmark(target_graph=None)
-direct = bench.run_full_benchmark(
+direc = bench.run_full_benchmark(
     graph_selection='100-130',
     topologies=['chimera_4x4x4'],
     methods=['minorminer','clique','atom','oct-triad','oct-triad-reduce','oct-fast-oct','oct-fast-oct-reduce'],
