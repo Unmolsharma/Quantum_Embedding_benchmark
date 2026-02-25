@@ -16,8 +16,10 @@ env/
 .env/
 .venv/
 
-# Benchmark results (generated output, not source)
+# Benchmark results and analysis output (generated, not source)
 results/
+analysis/*
+!analysis/.gitkeep
 
 # Compiled C++ binaries
 algorithms/atom/main

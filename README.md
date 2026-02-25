@@ -21,12 +21,19 @@ QEBench provides a clean, reproducible pipeline for benchmarking minor embedding
 ## Project Structure
 
 ```
-qebench/                    # Core Python package
+qebench/                    # Benchmark runner package
 ├── benchmark.py            #   benchmark_one(), EmbeddingBenchmark
 ├── registry.py             #   @register_algorithm, ALGORITHM_REGISTRY
 ├── graphs.py               #   load_test_graphs(), graph presets
 ├── results.py              #   ResultsManager (batch dirs, CSV, JSON)
 └── topologies.py           #   topology registry (Chimera, Pegasus, Zephyr)
+
+qeanalysis/                 # Post-benchmark analysis package (separate from qebench)
+├── loader.py               #   Load batch dir, derive computed columns
+├── summary.py              #   Aggregate tables (overall, by-category, rank)
+├── plots.py                #   All visualizations (scaling, Pareto, heatmaps, ...)
+├── statistics.py           #   Wilcoxon, Friedman, correlation, significance tests
+└── export.py               #   LaTeX table + PDF plot export
 
 algorithms/                 # External algorithm implementations
 ├── atom/                   #   ATOM C++ source (fixed — see docs/atom_changes.md)
@@ -43,6 +50,12 @@ test_graphs/                # Pre-generated graph JSON library
 ├── random/                 #   n∈{6,8,10,15,20} × d∈{0.2,0.3,0.5,0.7} × 3 instances
 ├── presets.csv             #   named selections (quick, diverse, ...)
 └── REGISTRY.md             #   full graph catalog
+
+results/                    # Benchmark output (gitignored)
+└── batch_YYYY-MM-DD_.../   #   timestamped batch from each run
+
+analysis/                   # Analysis output (gitignored)
+└── batch_YYYY-MM-DD_.../   #   matches results batch name; contains figures/ + tables/
 
 tests/                      # Pytest suite (84 tests)
 docs/                       # Extended documentation
@@ -131,7 +144,52 @@ results/
     └── README.md       # human-readable summary
 ```
 
-### 4. Load Test Graphs
+### 4. Post-Benchmark Analysis
+
+Once a benchmark batch has run, pass its directory to `BenchmarkAnalysis` to generate all plots and tables automatically:
+
+```python
+from qeanalysis import BenchmarkAnalysis
+
+an = BenchmarkAnalysis("results/batch_2026-02-25_09-25-10/")
+an.generate_report()
+# → writes to analysis/batch_2026-02-25_09-25-10/
+```
+
+`generate_report()` produces:
+
+```
+analysis/batch_2026-02-25_09-25-10/
+├── figures/          # 10 plot types + per-pair head-to-head + per-problem deep dives
+│   ├── heatmap_avg_chain_length.png
+│   ├── pareto_embedding_time_vs_avg_chain_length.png
+│   ├── scaling_embedding_time_vs_problem_nodes.png
+│   ├── head_to_head_minorminer_vs_oct-triad.png
+│   └── ...
+├── tables/           # 7 tables as both .csv and .tex (booktabs)
+│   ├── overall_summary.csv / .tex
+│   ├── win_rate_chain.csv / .tex
+│   ├── significance_chain.csv / .tex
+│   └── ...
+└── README.md         # index of all generated files
+```
+
+You can also call individual analyses directly:
+
+```python
+an.overall_summary()            # aggregate stats per algorithm
+an.win_rate_matrix()            # N×N pairwise win rate table
+an.significance_tests()         # Wilcoxon + Holm-Bonferroni p-values
+an.friedman_test()              # non-parametric multi-algo ANOVA
+an.correlation_matrix()         # Spearman: graph properties vs. embedding metrics
+fig = an.plot_pareto(save=False)  # returns matplotlib Figure
+```
+
+See [`docs/analysis.md`](docs/analysis.md) for a detailed description of every analysis method, the statistics used, and how to add new analyses.
+
+---
+
+### 5. Load Test Graphs
 
 ```python
 from qebench import load_test_graphs
@@ -250,7 +308,7 @@ result = benchmark_one(source, target, "my_greedy_v2")
 pytest tests/ -v
 ```
 
-84 tests covering: imports, `benchmark_one`, `EmbeddingResult`, metrics, registry, graph selection, presets, graph loading, batch runner, results storage, topology registry.
+163 tests covering: `qebench` (imports, `benchmark_one`, `EmbeddingResult`, metrics, registry, graph selection, presets, graph loading, batch runner, results storage, topology registry) and `qeanalysis` (loader, summary tables, win rate, significance tests, plots, export, full integration).
 
 > **Note:** 15 tests are currently failing due to a `KeyError: 'links'` in `nx.node_link_graph` when loading saved test graph JSONs — a NetworkX version compatibility issue. See `TODO.md` (Active Bugs) for the fix.
 
@@ -290,6 +348,7 @@ See [`TODO.md`](TODO.md) for the full task tracker. Key upcoming work:
 |------|----------|
 | [`WORKFLOW.md`](WORKFLOW.md) | Full API reference and architecture |
 | [`TODO.md`](TODO.md) | Task tracker and paper timeline |
+| [`docs/analysis.md`](docs/analysis.md) | qeanalysis methods: statistics, plots, export |
 | [`docs/atom_changes.md`](docs/atom_changes.md) | ATOM C++ bug fixes |
 | [`docs/algorithms.md`](docs/algorithms.md) | Algorithm integration details |
 | [`docs/topologies.md`](docs/topologies.md) | Topology registry reference |
