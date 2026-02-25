@@ -357,6 +357,8 @@ See [`TODO.md`](TODO.md) for the full task tracker. Key upcoming work:
 | [`WORKFLOW.md`](WORKFLOW.md) | Full API reference and architecture |
 | [`TODO.md`](TODO.md) | Task tracker and paper timeline |
 | [`docs/analysis.md`](docs/analysis.md) | qeanalysis methods: statistics, plots, export |
+| [`docs/adding_algorithms.md`](docs/adding_algorithms.md) | How to add new embedding algorithms |
+| [`docs/adding_test_graphs.md`](docs/adding_test_graphs.md) | How to add graphs to the test library |
 | [`docs/atom_changes.md`](docs/atom_changes.md) | ATOM C++ bug fixes |
 | [`docs/algorithms.md`](docs/algorithms.md) | Algorithm integration details |
 | [`docs/topologies.md`](docs/topologies.md) | Topology registry reference |
