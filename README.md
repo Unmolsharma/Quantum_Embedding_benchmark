@@ -146,14 +146,22 @@ results/
 
 ### 4. Post-Benchmark Analysis
 
-Once a benchmark batch has run, pass its directory to `BenchmarkAnalysis` to generate all plots and tables automatically:
+Once a benchmark batch has run, pass its directory to `BenchmarkAnalysis` to generate all plots and tables automatically. `run_full_benchmark()` returns the batch directory path, so you can chain them directly:
 
 ```python
+from qebench import EmbeddingBenchmark
 from qeanalysis import BenchmarkAnalysis
 
-an = BenchmarkAnalysis("results/batch_2026-02-25_09-25-10/")
-an.generate_report()
-# → writes to analysis/batch_2026-02-25_09-25-10/
+bench = EmbeddingBenchmark(target_graph=None)
+batch_dir = bench.run_full_benchmark(
+    graph_selection="quick",
+    topologies=["chimera_4x4x4"],
+    methods=["minorminer", "oct-triad"],
+    n_trials=5,
+)
+
+BenchmarkAnalysis(batch_dir).generate_report()
+# → writes to analysis/<batch-name>/
 ```
 
 `generate_report()` produces:

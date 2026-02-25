@@ -285,7 +285,7 @@ class EmbeddingBenchmark:
                           batch_note: str = ""):
         """
         Run complete benchmark suite.
-        
+
         Args:
             problems: List of (name, graph) tuples. If None, uses graph_selection.
             timeout: Timeout per embedding attempt.
@@ -297,6 +297,15 @@ class EmbeddingBenchmark:
             topologies: List of registered topology names for multi-topology runs.
                         Overrides target_graph/topology_name if provided.
             batch_note: Human-readable note describing this run.
+
+        Returns:
+            Path to the batch directory where results were saved, or None if no
+            graphs matched the selection.  Can be passed directly to
+            BenchmarkAnalysis for immediate post-processing::
+
+                batch_dir = bench.run_full_benchmark(...)
+                from qeanalysis import BenchmarkAnalysis
+                BenchmarkAnalysis(batch_dir).generate_report()
         """
         # Multi-topology: loop over each topology
         if topologies:
@@ -407,6 +416,7 @@ class EmbeddingBenchmark:
             config['batch_note'] = batch_note
         batch_dir = self.results_manager.create_batch(config, batch_note=batch_note)
         self.results_manager.save_results(self.results, batch_dir, config=config)
+        return batch_dir
     
     @property
     def results_dir(self):
