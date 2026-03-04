@@ -19,6 +19,51 @@ result = benchmark_one(source, target, "minorminer")
 
 ---
 
+### `minorminer-aggressive`
+**D-Wave MinorMiner (aggressive)** — CMR with more restarts for higher quality embeddings.
+
+- **Type:** Heuristic, randomized
+- **Source:** `minorminer` (same as above, different parameters)
+- **Parameters:** `tries=50`, `max_no_improve=20`
+- **Strengths:** Better embedding quality and shorter chains than default minorminer
+- **Weaknesses:** Significantly slower — ~5× more attempts per run
+- **Best for:** When embedding quality matters more than speed (e.g., final benchmarks, dense graphs)
+```python
+result = benchmark_one(source, target, "minorminer-aggressive")
+```
+
+---
+
+### `minorminer-fast`
+**D-Wave MinorMiner (fast)** — CMR with fewer restarts for rapid turnaround.
+
+- **Type:** Heuristic, randomized
+- **Source:** `minorminer` (same as above, different parameters)
+- **Parameters:** `tries=3`, `max_no_improve=3`
+- **Strengths:** Very fast — good for large-scale sweeps or quick feasibility checks
+- **Weaknesses:** Lower success rate and longer chains than default minorminer
+- **Best for:** Large graph libraries where you just need a quick pass, or as a lower-quality baseline
+```python
+result = benchmark_one(source, target, "minorminer-fast")
+```
+
+---
+
+### `minorminer-chainlength`
+**D-Wave MinorMiner (chain-optimised)** — CMR tuned to minimise chain lengths.
+
+- **Type:** Heuristic, randomized
+- **Source:** `minorminer` (same as above, different parameters)
+- **Parameters:** `tries=20`, `chainlength_patience=20`
+- **Strengths:** Produces shorter chains than default — important for solution quality on real hardware (longer chains increase noise sensitivity)
+- **Weaknesses:** Slower than default, roughly similar speed to `minorminer-aggressive`
+- **Best for:** Benchmarking chain length specifically, or preparing embeddings for actual QPU runs
+```python
+result = benchmark_one(source, target, "minorminer-chainlength")
+```
+
+---
+
 ### `clique`
 **D-Wave Clique Embedding** — topology-aware deterministic baseline.
 
@@ -76,6 +121,7 @@ result = benchmark_one(source, chimera_graph, "oct-triad")
 - **Best quality** among OCT-suite algorithms — combines randomized OCT with reduction
 
 ---
+
 
 ## Partially Working
 
