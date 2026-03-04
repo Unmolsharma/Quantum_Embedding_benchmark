@@ -198,7 +198,89 @@ class MinorMinerAlgorithm(EmbeddingAlgorithm):
             print(f"minorminer error: {e}")
             return None
 
+@register_algorithm("minorminer-aggressive")
+class MinorMinerAggressive(EmbeddingAlgorithm):
+    """CMR with more restarts — better quality, slower. (tries=50, max_no_improve=20)"""
+    
+    def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        try:
+            import minorminer
+            
+            start_time = time.time()
+            embedding = minorminer.find_embedding(
+                list(source_graph.edges()),
+                list(target_graph.edges()),
+                timeout=timeout,
+                verbose=0,
+                tries=50,
+                max_no_improve=20,
+            )
+            elapsed = time.time() - start_time
+            
+            if not embedding:
+                return None
+            
+            return {'embedding': embedding, 'time': elapsed}
+        except Exception as e:
+            print(f"minorminer-aggressive error: {e}")
+            return None
 
+
+@register_algorithm("minorminer-fast")
+class MinorMinerFast(EmbeddingAlgorithm):
+    """CMR with fewer restarts — fast but lower quality. (tries=3, max_no_improve=3)"""
+    
+    def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        try:
+            import minorminer
+            
+            start_time = time.time()
+            embedding = minorminer.find_embedding(
+                list(source_graph.edges()),
+                list(target_graph.edges()),
+                timeout=timeout,
+                verbose=0,
+                tries=3,
+                max_no_improve=3,
+            )
+            elapsed = time.time() - start_time
+            
+            if not embedding:
+                return None
+            
+            return {'embedding': embedding, 'time': elapsed}
+        except Exception as e:
+            print(f"minorminer-fast error: {e}")
+            return None
+
+
+@register_algorithm("minorminer-chainlength")
+class MinorMinerChainLength(EmbeddingAlgorithm):
+    """CMR optimised for short chains — slower but cleaner. (tries=20, chainlength_patience=20)"""
+    
+    def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        try:
+            import minorminer
+            
+            start_time = time.time()
+            embedding = minorminer.find_embedding(
+                list(source_graph.edges()),
+                list(target_graph.edges()),
+                timeout=timeout,
+                verbose=0,
+                tries=20,
+                chainlength_patience=20,
+            )
+            elapsed = time.time() - start_time
+            
+            if not embedding:
+                return None
+            
+            return {'embedding': embedding, 'time': elapsed}
+        except Exception as e:
+            print(f"minorminer-chainlength error: {e}")
+            return None
+            
 @register_algorithm("clique")
 class CliqueEmbeddingAlgorithm(EmbeddingAlgorithm):
     """D-Wave clique embedding — topology-aware deterministic baseline."""
