@@ -239,6 +239,10 @@ Graph IDs map to categories (see `test_graphs/REGISTRY.md`):
 | `oct-hybrid-oct-reduce` | ⚠️ Often invalid | Same as hybrid-oct |
 | `atom` | ✅ Fixed | C++ bugs fixed; see `docs/atom_changes.md` |
 | `charme` | ❌ Stub | RL framework — Python integration pending |
+| `pssa`               | Should work, need testing | PSSA — path-annealing SA, auto tmax, Chimera/Pegasus/Zephyr |
+| `pssa-weighted`      | Should work, need testing | PSSA with degree-weighted shifts — best for cubic/regular graphs |
+| `pssa-fast`          | Should work, need testing  | PSSA fast — tmax=50,000, good for large sweeps |
+| `pssa-thorough`      | Should work, need testing | PSSA thorough — tmax=2,000,000, best quality |
 
 ---
 
