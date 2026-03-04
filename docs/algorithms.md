@@ -123,6 +123,41 @@ result = benchmark_one(source, chimera_graph, "oct-triad")
 ---
 
 
+### PSSA — path-annealing simulated annealing, adapted for D-Wave hardware.
+* Type: Simulated annealing heuristic (auto tmax, scaled to hardware size)
+* Paper: Sugie et al. (2020) arXiv:2004.03819
+* Chimera, Pegasus, Zephyr
+* Strengths: Strong on cubic/regular graphs, terminal search recovers wasted qubits
+* Note: install — see github.com/Unmolsharma/PSSA-Dwave-Implementation-
+
+### pssa-weighted
+
+PSSA with degree-weighted shift proposals.
+* Type: Simulated annealing heuristic (weighted, auto tmax)
+* Paper: Sugie et al. (2020) arXiv:2004.03819
+* Chimera, Pegasus, Zephyr
+* Strengths: Best variant for 3-regular and cubic input graphs
+* Note: install — see github.com/Unmolsharma/PSSA-Dwave-Implementation-
+
+### pssa-fast
+
+PSSA with reduced iteration count for quick runs.
+* Type: Simulated annealing heuristic (tmax=50,000)
+* Paper: Sugie et al. (2020) arXiv:2004.03819
+* Chimera, Pegasus, Zephyr
+* Strengths: Fast feasibility checks, good for large parameter sweeps
+* Note: Oinstall — see github.com/Unmolsharma/PSSA-Dwave-Implementation-
+
+### pssa-thorough
+
+PSSA with extended iteration count for best quality.
+* Type: Simulated annealing heuristic (tmax=2,000,000)
+* Paper: Sugie et al. (2020) arXiv:2004.03819
+* Chimera, Pegasus, Zephyr
+* Strengths: Highest quality embeddings, best for final benchmarks and hard graphs
+* Note: install — see github.com/Unmolsharma/PSSA-Dwave-Implementation-
+
+
 ## Partially Working
 
 ### `oct-hybrid-oct` / `oct-hybrid-oct-reduce`
