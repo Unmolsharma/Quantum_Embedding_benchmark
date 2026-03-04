@@ -406,6 +406,127 @@ class CharmeAlgorithm(EmbeddingAlgorithm):
         print("   Import its Python modules directly to use it.")
         return None
 
+# PSSA (Probabilistic-Swap-Shift-Annealing) (inspired by paper, changed for D-wave hardware, placeholder until code is found)
+# Path-annealing minor embedding for Chimera, Pegasus, and Zephyr hardware.
+# Based on Sugie et al. (2020) arXiv:2004.03819, adapted for D-Wave topologies.
+#
+# SOURCE:  https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
+#
+# TO INSTALL (pick one):
+#   Option A — clone and install locally:
+#     git clone https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
+#     cd PSSA-Dwave-Implementation-
+#     pip install -e .
+#
+#   Option B — install directly from GitHub:
+#     pip install git+https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
+#
+# DEPENDENCIES (installed automatically):
+#   dwave-networkx>=0.8
+#   minorminer>=0.2
+#
+# REGISTERED ALGORITHMS (available after install):
+#   "pssa"           — default, auto tmax
+#   "pssa-weighted"  — degree-weighted shifts, best for cubic/regular graphs
+#   "pssa-fast"      — tmax=50,000, good for large sweeps
+#   "pssa-thorough"  — tmax=2,000,000, best quality
+#
+# If not installed, these algorithms are silently skipped and a message
+# is printed to stdout explaining how to get them.
+# ──────────────────────────────────────────────────────────────────────────
+
+def _try_register_pssa():
+    try:
+        from pssa_dwave.improved_pssa import ImprovedPSSA, is_valid_embedding
+        from pssa_dwave.core import eemb, invert
+        import time as _time
+
+        class _PSSABase(EmbeddingAlgorithm):
+            _weighted       = False
+            _tmax_override  = None
+
+            def embed(self, source_graph, target_graph, **kwargs):
+                try:
+                    t0       = _time.time()
+                    topology = self._detect_topology(target_graph)
+
+                    algo = ImprovedPSSA(
+                        topology       = topology,
+                        tmax           = self._tmax_override,
+                        weighted       = self._weighted,
+                        hardware_graph = target_graph,
+                        verbose        = False,
+                    )
+                    result  = algo.run(source_graph)
+                    elapsed = _time.time() - t0
+
+                    if not result.success and result.eemb == 0:
+                        return None
+
+                    return {
+                        'embedding': result.phi,
+                        'time':      elapsed,
+                        'coverage':  result.coverage,
+                    }
+                except Exception as e:
+                    print(f"PSSA error: {e}")
+                    return None
+
+            def _detect_topology(self, H):
+                data = H.graph
+                if 'family' in data:
+                    fam = str(data['family']).lower()
+                    if 'chimera' in fam:  return 'chimera'
+                    if 'pegasus' in fam:  return 'pegasus'
+                    if 'zephyr'  in fam:  return 'zephyr'
+                avg_deg = sum(d for _, d in H.degree()) / max(H.number_of_nodes(), 1)
+                if avg_deg < 8:   return 'chimera'
+                if avg_deg < 18:  return 'pegasus'
+                return 'zephyr'
+
+        @register_algorithm("pssa")
+        class PSSADefault(_PSSABase):
+            """PSSA — auto topology detection, auto tmax."""
+            pass
+
+        @register_algorithm("pssa-weighted")
+        class PSSAWeighted(_PSSABase):
+            """PSSA with degree-weighted shifts — best for cubic/regular graphs."""
+            _weighted = True
+
+        @register_algorithm("pssa-fast")
+        class PSSAFast(_PSSABase):
+            """PSSA fast — tmax=50,000. Good for large sweeps."""
+            _tmax_override = 50_000
+
+        @register_algorithm("pssa-thorough")
+        class PSSAThorough(_PSSABase):
+            """PSSA thorough — tmax=2,000,000. Best quality."""
+            _tmax_override = 2_000_000
+
+        print("✓ PSSA algorithms registered (pssa, pssa-weighted, pssa-fast, pssa-thorough)")
+
+    except ImportError:
+        print(
+            "\n"
+            "⚠  PSSA algorithms unavailable — pssa_dwave is not installed.\n"
+            "\n"
+            "   To install:\n"
+            "     1. git clone https://github.com/Unmolsharma/PSSA-Dwave-Implementation-\n"
+            "     2. cd PSSA-Dwave-Implementation-\n"
+            "     3. pip install -e .\n"
+            "\n"
+            "   Or install directly from GitHub (no clone needed):\n"
+            "     pip install git+https://github.com/Unmolsharma/PSSA-Dwave-Implementation-\n"
+            "\n"
+            "   Then re-run your benchmark — pssa, pssa-weighted, pssa-fast,\n"
+            "   and pssa-thorough will appear automatically.\n"
+            "\n"
+            "   Requires: dwave-networkx>=0.8  minorminer>=0.2\n"
+        )
+
+_try_register_pssa()
+
 
 def _make_oct_algorithm_class(algo_name: str, extra_flags: list, desc: str):
     """Factory to create and register an OCT-suite algorithm class."""
