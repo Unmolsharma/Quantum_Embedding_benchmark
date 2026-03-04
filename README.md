@@ -227,6 +227,9 @@ Graph IDs map to categories (see `test_graphs/REGISTRY.md`):
 | Algorithm | Status | Notes |
 |-----------|--------|-------|
 | `minorminer` | ✅ Working | D-Wave heuristic — no compilation needed |
+| `minorminer-aggressive` | ✅ Working | CMR — more restarts, higher quality |
+| `minorminer-fast`       | ✅ Working | CMR — fewer restarts, faster |
+| `minorminer-chainlength`| ✅ Working | CMR — optimised for short chains |
 | `clique` | ✅ Working | `dwave_networkx.find_clique_embedding` |
 | `oct-triad` | ✅ Working | — |
 | `oct-triad-reduce` | ✅ Working | — |
