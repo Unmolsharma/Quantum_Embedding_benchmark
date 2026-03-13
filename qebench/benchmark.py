@@ -64,6 +64,13 @@ class EmbeddingResult:
     
     # Error handling
     error_message: Optional[str] = None
+
+    # Algorithmic operation counters — hardware-agnostic work metrics.
+    # None means the algorithm does not report this counter; 0 is a valid value.
+    target_node_visits: Optional[int] = None        # search effort: target graph nodes visited during embedding
+    cost_function_evaluations: Optional[int] = None # decision effort: cost function calls made
+    embedding_state_mutations: Optional[int] = None # editing effort: times the embedding state was modified
+    overlap_qubit_iterations: Optional[int] = None  # congestion effort: overlap-resolving iterations (iterative algorithms only)
     
     def to_dict(self):
         """Convert to dict. Embedding stored as JSON string for CSV compatibility."""

@@ -185,7 +185,9 @@ class TestEmbeddingResult:
             'chain_lengths', 'max_chain_length', 'avg_chain_length',
             'total_qubits_used', 'total_couplers_used',
             'problem_nodes', 'problem_edges', 'problem_density',
-            'error_message'
+            'error_message',
+            'target_node_visits', 'cost_function_evaluations',
+            'embedding_state_mutations', 'overlap_qubit_iterations',
         }
         assert set(d.keys()) == expected_keys
 
