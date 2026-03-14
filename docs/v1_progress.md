@@ -4,6 +4,14 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-14 — SQLite-backed storage with per-worker JSONL files**
+- **Two-phase write pattern:** each measured trial is appended to `workers/worker_{pid}.jsonl` immediately after completion (no locking needed — one file per process). After all trials complete, `compile_batch()` consolidates all JSONL files into `results.db`.
+- **`qebench/compile.py`** — new module, exports `compile_batch(batch_dir)`. Reads `workers/worker_*.jsonl`, creates `results.db` (SQLite, WAL mode) with tables: `runs`, `embeddings`, `partial_embeddings`, `graphs`, `batches`, `suspensions` (stub), `layer4_flags` (stub). Inserts per worker file in a single transaction, enforces a `UNIQUE(algorithm, problem_name, topology_name, trial, seed)` constraint, builds indexes and runs `ANALYZE` after all inserts. Also exports `runs.csv` from SQLite for backward compatibility with `qeanalysis`.
+- **`EmbeddingResult.to_jsonl_dict()`** — new method. Stores embedding as a nested dict (`{"0": [q1, q2], ...}`) rather than a JSON string, and includes `chain_lengths` as a plain list. JSONL records are augmented with `seed` and `batch_id` at write time.
+- **`results.py` simplified** — `save_results()` now only writes `summary.csv` and `README.md`; `_save_runs_csv()` and `_save_runs_json()` removed (superseded by `compile_batch()`).
+- **Smoke test updated** — CHECK 2 verifies `results.db` and `workers/` exist; CHECK 3 queries SQLite directly (row count, `PRAGMA table_info`, status validity, `embeddings`/`graphs`/`batches` table counts); CHECK 7 reference comparison reads from SQLite rather than `runs.csv`. Parquet telemetry is a documented stub — algorithms do not yet emit per-stage data.
+- 38/38 smoke checks pass; regression detection verified by corrupting `avg_chain_length` in the reference snapshot and confirming the exact row/column/value is reported.
+
 **2026-03-13 — RNG-based seeding + default seed=42 fallback**
 - `run_full_benchmark()` default changed from `seed=None` to `seed=42` — runs are reproducible out-of-the-box without the caller having to think about it.
 - Replaced `seed + trial` arithmetic with a `random.Random(seed)` RNG: each `benchmark_one()` call draws an independent `randint(0, 2**31-1)` from the RNG, so every (problem, algorithm, topology, trial) gets a truly distinct seed while the full run remains reproducible from the master seed.

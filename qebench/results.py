@@ -10,7 +10,6 @@ Handles:
 """
 
 import json
-import os
 import platform
 import sys
 import subprocess as _subprocess
@@ -95,10 +94,13 @@ class ResultsManager:
         self._update_latest_symlink(batch_dir)
         return batch_dir
     
-    def save_results(self, results: list, batch_dir: Path, 
+    def save_results(self, results: list, batch_dir: Path,
                      config: Optional[dict] = None):
-        """Save all results to runs.csv, runs.json, summary.csv, and README.md.
-        
+        """Save summary.csv and README.md for a completed batch.
+
+        runs.csv and results.db are written by compile_batch() before this is
+        called — this method only handles the human-readable artefacts.
+
         Args:
             results: List of EmbeddingResult objects.
             batch_dir: Path to the batch directory (from create_batch).
@@ -106,39 +108,18 @@ class ResultsManager:
         """
         if not results:
             return
-        
-        self._save_runs_csv(results, batch_dir)
-        self._save_runs_json(results, batch_dir)
+
         self._save_summary(results, batch_dir)
         self._save_readme(results, batch_dir, config)
-        
+
         print(f"\n📁 Results saved to {batch_dir}/")
         print(f"   ├── README.md    (human-readable summary)")
         print(f"   ├── config.json  (machine-readable settings)")
-        print(f"   ├── runs.csv     ({len(results)} rows, no embeddings)")
-        print(f"   ├── runs.json    ({len(results)} entries with embeddings)")
+        print(f"   ├── results.db   (SQLite — runs, embeddings, graphs, batches)")
+        print(f"   ├── runs.csv     ({len(results)} rows, exported from SQLite)")
+        print(f"   ├── workers/     (per-process JSONL source files)")
         print(f"   └── summary.csv  (grouped averages ± std dev)")
-    
-    def _save_runs_csv(self, results: list, batch_dir: Path):
-        """Save per-run CSV without embeddings (lightweight)."""
-        rows = []
-        for r in results:
-            d = r.to_dict()
-            d.pop('embedding', None)  # exclude embeddings from CSV
-            d.pop('chain_lengths', None)  # list doesn't CSV well
-            rows.append(d)
-        
-        df = pd.DataFrame(rows)
-        csv_path = batch_dir / "runs.csv"
-        df.to_csv(csv_path, index=False)
-    
-    def _save_runs_json(self, results: list, batch_dir: Path):
-        """Save per-run JSON with embeddings (full archive)."""
-        json_path = batch_dir / "runs.json"
-        data = [r.to_dict() for r in results]
-        with open(json_path, 'w') as f:
-            json.dump(data, f, indent=2)
-    
+
     def _save_summary(self, results: list, batch_dir: Path):
         """Save grouped averages and std devs.
         
@@ -251,10 +232,11 @@ class ResultsManager:
         lines.append("## Files\n")
         lines.append("| File | Contents |")
         lines.append("|------|----------|")
-        lines.append("| `runs.csv` | Every trial as a row (no embeddings) |")
-        lines.append("| `runs.json` | Every trial with actual embeddings |")
+        lines.append("| `results.db` | SQLite — runs, embeddings, graphs, batches |")
+        lines.append("| `runs.csv` | Every trial as a row (exported from SQLite) |")
         lines.append("| `summary.csv` | Grouped averages ± std dev |")
         lines.append("| `config.json` | Machine-readable settings |")
+        lines.append("| `workers/` | Per-process JSONL source files |")
         lines.append("")
         
         with open(batch_dir / "README.md", 'w') as f:

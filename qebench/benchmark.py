@@ -9,6 +9,8 @@ Batch runner:
     bench.run_full_benchmark(graph_selection="quick", methods=["minorminer"])
 """
 
+import multiprocessing
+import os
 import time
 import random as _random
 try:
@@ -33,6 +35,7 @@ from qebench.registry import ALGORITHM_REGISTRY, validate_embedding, list_algori
 from qebench.graphs import load_test_graphs as _load_test_graphs, parse_graph_selection, verify_manifest
 from qebench.results import ResultsManager
 from qebench.topologies import get_topology, TOPOLOGY_REGISTRY
+from qebench.compile import compile_batch
 
 
 @dataclass
@@ -85,6 +88,19 @@ class EmbeddingResult:
         if d['embedding'] is not None:
             # Convert int keys to strings for JSON serialization
             d['embedding'] = json.dumps({str(k): v for k, v in d['embedding'].items()})
+        return d
+
+    def to_jsonl_dict(self):
+        """Convert to dict for worker JSONL files.
+
+        Differs from to_dict():
+        - embedding stored as nested dict {"0": [q1, q2], ...} — not a JSON string
+        - chain_lengths included as a plain list (omitted from SQLite later, not here)
+        This makes the JSONL record the definitive complete archive of each trial.
+        """
+        d = asdict(self)
+        if d['embedding'] is not None:
+            d['embedding'] = {str(k): list(v) for k, v in d['embedding'].items()}
         return d
 
 
@@ -460,6 +476,11 @@ class EmbeddingBenchmark:
             config['batch_note'] = batch_note
         batch_dir = self.results_manager.create_batch(config, batch_note=batch_note)
 
+        # Create workers/ directory up front — each run appends to its own PID file
+        workers_dir = batch_dir / "workers"
+        workers_dir.mkdir(exist_ok=True)
+        _worker_file = workers_dir / f"worker_{os.getpid()}.jsonl"
+
         topo_str = f" × {len(topo_list)} topologies" if len(topo_list) > 1 else ""
         trials_str = f" × {n_trials} trials" if n_trials > 1 else ""
         warmup_str = f" (+ {warmup_trials} warm-up)" if warmup_trials > 0 else ""
@@ -501,15 +522,21 @@ class EmbeddingBenchmark:
                         trial_str = f" [trial {trial+1}/{n_trials}]" if n_trials > 1 else ""
                         topo_tag = f" [{topo_name}]" if len(topo_list) > 1 else ""
                         print(f"  [{current_run}/{total_runs}] Running {algo_name}{trial_str}{topo_tag}...", end=" ")
+                        trial_seed = _rng.randint(0, 2**31 - 1)
                         result = benchmark_one(
                             source_graph, target_graph, algo_name,
                             timeout=timeout, problem_name=problem_name,
                             topology_name=topo_name, trial=trial,
-                            seed=_rng.randint(0, 2**31 - 1),
+                            seed=trial_seed,
                         )
-                        
+
                         self.results.append(result)
-                        
+                        with open(_worker_file, "a") as _wf:
+                            record = result.to_jsonl_dict()
+                            record['seed'] = trial_seed
+                            record['batch_id'] = batch_dir.name
+                            _wf.write(json.dumps(record) + "\n")
+
                         if result.success:
                             valid_str = " ✓valid" if result.is_valid else " ✗invalid"
                             print(f"✓ wall={result.wall_time:.3f}s "
@@ -522,6 +549,7 @@ class EmbeddingBenchmark:
         print("\n" + "=" * 80)
         print("Benchmark complete!")
 
+        compile_batch(batch_dir)
         self.results_manager.save_results(self.results, batch_dir, config=config)
         return batch_dir
     

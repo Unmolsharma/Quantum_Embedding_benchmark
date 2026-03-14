@@ -2,19 +2,20 @@
 Smoke Benchmark — Full End-to-End Pipeline
 ==========================================
 Run this manually after major architectural changes to validate the complete
-pipeline: EmbeddingBenchmark → ResultsManager → BenchmarkAnalysis.
+pipeline: EmbeddingBenchmark → compile_batch → ResultsManager → BenchmarkAnalysis.
 
 What it exercises:
   1. EmbeddingBenchmark.run_full_benchmark() with explicit problem list
   2. Multi-topology run (chimera_4x4x4, pegasus_4)
-  3. ResultsManager: batch directory created, runs.csv + config.json written
-  4. summary.csv present and non-empty
-  5. BenchmarkAnalysis.generate_report() runs without error
-  6. Expected output files exist: figures/ + tables/ populated
-  7. runs.csv has correct number of rows and key columns
-  8. All row statuses are valid enum values
-  9. At least one algorithm succeeds on every graph in each topology
- 10. Deterministic columns match the stored reference snapshot
+  3. compile_batch: results.db created with runs/embeddings/graphs/batches tables
+  4. workers/ directory populated with per-process JSONL files
+  5. summary.csv present and non-empty
+  6. BenchmarkAnalysis.generate_report() runs without error
+  7. Expected output files exist: figures/ + tables/ populated
+  8. results.db has correct number of rows and key columns
+  9. All row statuses are valid enum values
+ 10. At least one algorithm succeeds on every graph in each topology
+ 11. Deterministic columns match the stored reference snapshot
 
 Reference comparison
 --------------------
@@ -34,10 +35,11 @@ Run normally:
     conda run -n minor python tests/smoke_full_pipeline.py
 """
 
-import os
-import sys
 import csv
 import json
+import os
+import sqlite3
+import sys
 import tempfile
 from pathlib import Path
 
@@ -91,9 +93,9 @@ EXPECTED_TABLES = [
 REFERENCE_DIR = Path(__file__).parent / "reference_data"
 REFERENCE_CSV = REFERENCE_DIR / "smoke_reference.csv"
 
-# Columns used for regression comparison — excludes timing (varies per machine)
-# and 'error'/'metadata' (may contain transient strings). Everything else must
-# be bit-identical to the reference when the same seed is used.
+# Columns used for regression comparison — excludes timing (varies per machine),
+# seed (RNG-internal), run_id (UUID), and error (transient strings). Everything
+# else must be bit-identical to the reference when the same master seed is used.
 COMPARE_COLS = [
     "algorithm", "problem_name", "topology_name", "trial",
     "success", "status", "is_valid",
@@ -131,11 +133,26 @@ def section(title: str):
     print(f"{'─' * 70}")
 
 
-def _read_compare_rows(csv_path: Path) -> list:
-    """Read a runs.csv and return sorted rows with only COMPARE_COLS present."""
+def _read_compare_rows_from_db(db_path: Path) -> list:
+    """Query results.db and return sorted rows with only COMPARE_COLS."""
+    con = sqlite3.connect(db_path)
+    con.row_factory = sqlite3.Row
+    # Fetch all columns — we'll filter to COMPARE_COLS after
+    rows = con.execute(
+        "SELECT * FROM runs ORDER BY topology_name, algorithm, problem_name, trial"
+    ).fetchall()
+    con.close()
+
+    available = set(rows[0].keys()) if rows else set()
+    cols = [c for c in COMPARE_COLS if c in available]
+    trimmed = [{c: str(r[c]) if r[c] is not None else "" for c in cols} for r in rows]
+    return sorted(trimmed, key=lambda r: [r.get(c, "") for c in SORT_COLS])
+
+
+def _read_compare_rows_from_csv(csv_path: Path) -> list:
+    """Read the reference CSV and return sorted rows with only COMPARE_COLS."""
     with open(csv_path) as fh:
         rows = list(csv.DictReader(fh))
-    # Keep only COMPARE_COLS (skip any that are absent for forward-compat)
     cols = [c for c in COMPARE_COLS if c in (rows[0] if rows else {})]
     trimmed = [{c: r[c] for c in cols} for r in rows]
     return sorted(trimmed, key=lambda r: [r.get(c, "") for c in SORT_COLS])
@@ -166,59 +183,93 @@ with tempfile.TemporaryDirectory(prefix="qebench_smoke_") as tmpdir:
     check(batch_path.is_dir(), f"batch_dir does not exist: {batch_path}")
     print(f"  Batch directory: {batch_path.name}")
 
-    # ── CHECK 2: ResultsManager output files ─────────────────────────────────
+    # ── CHECK 2: Output files present ────────────────────────────────────────
 
     section("CHECK 2: Results files present")
 
-    runs_csv    = batch_path / "runs.csv"
-    config_json = batch_path / "config.json"
-    summary_csv = batch_path / "summary.csv"
+    db_path      = batch_path / "results.db"
+    workers_dir  = batch_path / "workers"
+    config_json  = batch_path / "config.json"
+    summary_csv  = batch_path / "summary.csv"
+    runs_csv     = batch_path / "runs.csv"   # exported from SQLite for qeanalysis
 
-    check(runs_csv.exists(),    "runs.csv not found in batch dir")
+    check(db_path.exists(),     "results.db not found in batch dir")
+    check(workers_dir.is_dir(), "workers/ directory not found in batch dir")
     check(config_json.exists(), "config.json not found in batch dir")
     check(summary_csv.exists(), "summary.csv not found in batch dir")
+    check(runs_csv.exists(),    "runs.csv not found in batch dir")
 
-    for f in [runs_csv, config_json, summary_csv]:
-        print(f"  {'✓' if f.exists() else '✗'}  {f.name}")
+    jsonl_files = list(workers_dir.glob("worker_*.jsonl")) if workers_dir.exists() else []
+    check(len(jsonl_files) > 0, "No worker JSONL files found in workers/")
 
-    # ── CHECK 3: runs.csv row count and column validity ───────────────────────
+    for f in [db_path, workers_dir, config_json, summary_csv, runs_csv]:
+        exists = f.exists()
+        print(f"  {'✓' if exists else '✗'}  {f.name}")
+    print(f"  ✓  workers/ contains {len(jsonl_files)} JSONL file(s)")
 
-    section("CHECK 3: runs.csv integrity")
+    # ── CHECK 3: results.db integrity ────────────────────────────────────────
 
-    rows = []
-    if runs_csv.exists():
-        with open(runs_csv) as fh:
-            reader = csv.DictReader(fh)
-            rows = list(reader)
+    section("CHECK 3: results.db integrity")
 
+    db_rows = []
+    if db_path.exists():
+        con = sqlite3.connect(db_path)
+        con.row_factory = sqlite3.Row
+
+        # Row count
+        db_rows = con.execute("SELECT * FROM runs").fetchall()
         expected_rows = len(PROBLEMS) * len(METHODS) * N_TRIALS * len(TOPOLOGIES)
-        check(len(rows) == expected_rows,
-              f"runs.csv: expected {expected_rows} rows, got {len(rows)}")
-        print(f"  Row count: {len(rows)} (expected {expected_rows})")
+        check(len(db_rows) == expected_rows,
+              f"runs table: expected {expected_rows} rows, got {len(db_rows)}")
+        print(f"  Row count: {len(db_rows)} (expected {expected_rows})")
 
+        # Required columns
+        col_names = {d[1] for d in con.execute("PRAGMA table_info(runs)").fetchall()}
         required_cols = {
-            "algorithm", "problem_name", "topology_name", "trial",
-            "success", "status", "wall_time", "cpu_time", "is_valid",
-            "avg_chain_length", "max_chain_length", "total_qubits_used",
-            "problem_nodes", "problem_edges", "algorithm_version",
+            "algorithm", "algorithm_version", "problem_name", "topology_name",
+            "trial", "seed", "wall_time", "cpu_time",
+            "status", "success", "is_valid", "partial",
+            "avg_chain_length", "max_chain_length",
+            "total_qubits_used", "total_couplers_used",
+            "problem_nodes", "problem_edges",
         }
-        actual_cols = set(rows[0].keys()) if rows else set()
-        missing_cols = required_cols - actual_cols
-        check(not missing_cols, f"runs.csv missing columns: {missing_cols}")
-        print(f"  Columns present: {len(actual_cols)} "
+        missing_cols = required_cols - col_names
+        check(not missing_cols, f"runs table missing columns: {missing_cols}")
+        print(f"  Columns present: {len(col_names)} "
               f"({'all required' if not missing_cols else 'MISSING: ' + str(missing_cols)})")
 
-        bad_statuses = [r["status"] for r in rows if r["status"] not in VALID_STATUSES]
+        # Status validity
+        bad_statuses = [
+            r["status"] for r in db_rows if r["status"] not in VALID_STATUSES
+        ]
         check(not bad_statuses,
-              f"runs.csv: {len(bad_statuses)} rows with invalid status: {set(bad_statuses)}")
+              f"runs table: {len(bad_statuses)} rows with invalid status: {set(bad_statuses)}")
         print(f"  Status validity: {'OK' if not bad_statuses else 'FAIL'}")
 
+        # Successes per topology
         for topo in TOPOLOGIES:
-            successes = [r for r in rows
-                         if r["topology_name"] == topo and r["success"] == "True"]
+            successes = [r for r in db_rows
+                         if r["topology_name"] == topo and r["success"] == 1]
             check(len(successes) > 0,
                   f"No successful embeddings for topology {topo!r}")
             print(f"  Successes in {topo}: {len(successes)}")
+
+        # embeddings table populated
+        n_emb = con.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
+        check(n_emb > 0, "embeddings table is empty")
+        print(f"  embeddings table: {n_emb} row(s)")
+
+        # graphs table populated
+        n_graphs = con.execute("SELECT COUNT(*) FROM graphs").fetchone()[0]
+        check(n_graphs == len(PROBLEMS), f"graphs table: expected {len(PROBLEMS)}, got {n_graphs}")
+        print(f"  graphs table: {n_graphs} unique problem(s)")
+
+        # batches table
+        n_batches = con.execute("SELECT COUNT(*) FROM batches").fetchone()[0]
+        check(n_batches == 1, f"batches table: expected 1 row, got {n_batches}")
+        print(f"  batches table: {n_batches} batch row(s)")
+
+        con.close()
 
     # ── CHECK 4: config.json content ─────────────────────────────────────────
 
@@ -285,8 +336,8 @@ with tempfile.TemporaryDirectory(prefix="qebench_smoke_") as tmpdir:
 
     section("CHECK 7: Reference snapshot comparison")
 
-    if runs_csv.exists():
-        new_rows = _read_compare_rows(runs_csv)
+    if db_path.exists():
+        new_rows = _read_compare_rows_from_db(db_path)
 
         if UPDATE_REFERENCE:
             # ── UPDATE MODE: save the current run as the new reference ────────
@@ -305,12 +356,11 @@ with tempfile.TemporaryDirectory(prefix="qebench_smoke_") as tmpdir:
             # ── FIRST RUN: no reference yet ───────────────────────────────────
             print(f"  No reference snapshot found at {REFERENCE_CSV}")
             print(f"  Re-run with UPDATE_REFERENCE=1 to create it.")
-            # Not a failure — just inform
             check(True, "")
 
         else:
             # ── COMPARISON MODE ───────────────────────────────────────────────
-            ref_rows = _read_compare_rows(REFERENCE_CSV)
+            ref_rows = _read_compare_rows_from_csv(REFERENCE_CSV)
 
             row_count_ok = len(new_rows) == len(ref_rows)
             check(row_count_ok,
