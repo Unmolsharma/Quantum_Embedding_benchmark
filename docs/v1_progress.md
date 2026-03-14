@@ -4,6 +4,23 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-14 — Layer 2 type/format validation + original-output logging + validation test script**
+- **`validate_layer2(result, source_graph, target_graph)`** added to `qebench/validation.py`. Six checks in order (stops at first failure): (1) key validity — no extra/missing source-graph keys in embedding; (2) value validity — all chain qubits exist in target graph; (3) type correctness — embedding keys and chain values are plain Python `int` (`type(x) is int`, not `isinstance`, so `numpy.int64` is rejected); (4) chain format — chains are `list` objects (not set/tuple/ndarray); (5) wall time validity — if `result['time']` present, must be a positive finite float; (6) CPU time plausibility — if `result['cpu_time']` present, must be ≥0 and ≤ `wall_time × os.cpu_count()`.
+- **Runs before Layer 1** on every result, even failures. Type errors would cause Layer 1 to raise exceptions rather than return a clean INVALID_OUTPUT.
+- **Original-output logging**: when Layer 2 or Layer 1 flags a result, the error message includes what the algorithm originally claimed — e.g. `"Algorithm claimed success=True, embedding_size=10; Layer 2 [type_correctness]: ..."`. This appears in both the per-run log footer and the runner WARNING log line.
+- **`tests/test_validation_layers.py`** — new runnable test script. Registers 8 mock algorithms (MockValid + 7 invalid variants), runs a single batch against a hand-crafted 6-node target graph + K3 source, then asserts each result has the expected status and check name. All 8 assertions pass. Batch is written with `batch_note="testingValidationLayers1_2"` for manual inspection of log files.
+- **3 stale tests updated** in `tests/test_qebench.py` — `test_results_saved_to_json` → `test_results_saved_to_db` (queries SQLite); `test_runs_csv_excludes_embeddings` → uses `run_full_benchmark` (compile_batch path); `test_runs_json_includes_embeddings` → `test_worker_jsonl_includes_embeddings` (reads worker JSONL).
+- 84/84 `test_qebench.py` tests pass.
+- **Not yet implemented** (deferred): Layer 3 (consistency — success↔embedding, counter types, valid status strings); Layer 4 (batch-level statistical checks). See `TODO_OutputValidation.md`.
+
+**2026-03-14 — Layer 1 structural validation (`qebench/validation.py`)**
+- **`qebench/validation.py`** — new module (no deps on algorithm code). Exports `validate_layer1(embedding, source_graph, target_graph) -> ValidationResult`. `ValidationResult` is a dataclass with `passed: bool`, `check_name: str | None`, `detail: str | None`.
+- **Five checks in order** (stops at first failure): (1) coverage — every source vertex has a chain; (2) non-empty chains — every chain has ≥1 target node; (3) connectivity — every chain forms a connected subgraph of target (BFS, no subgraph object created); (4) disjointness — no target qubit in >1 chain (reverse-map dict, O(1) collision detection); (5) edge preservation — every source edge has a corresponding target edge between chains (O(e) via neighbor iteration into chain_v set).
+- **Failure detail flows to `result.error`**: on INVALID_OUTPUT from Layer 1, error is set to `"Layer 1 [{check_name}]: {detail}"` (e.g. `"Layer 1 [disjointness]: target qubit 42 appears in chains for source vertex 3 and 7"`). `batch_logger.log_run()` logs this at WARNING automatically.
+- **Replaced `validate_embedding()`** in `benchmark_one()` — old function returned `bool` only with no detail and swallowed exceptions silently. New module returns structured result; `validate_embedding` import removed from `benchmark.py`.
+- **Not yet implemented** (deferred — see `TODO_OutputValidation.md`): Layer 2 (type/format — numpy int keys, tuple chains, NaN wall time, CPU plausibility; must run before Layer 1); Layer 3 (consistency — success↔embedding, counter types, valid status strings); Layer 4 (batch-level statistical checks).
+- 38/38 smoke checks pass.
+
 **2026-03-14 — Per-run log capture + runner logger (`qebench/loggers.py`)**
 - **`qebench/loggers.py`** — new module (no deps on algorithm or validation code). Exports `BatchLogger`, `capture_run`, `run_log_path`.
 - **`capture_run(log_path)`** — context manager that redirects `sys.stdout` and `sys.stderr` to a per-run log file for the duration of each `embed()` call. Restores original streams in `finally`. Safe for both sequential and parallel (per-process) use.

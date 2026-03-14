@@ -459,8 +459,9 @@ class TestBatchRunner:
         )
         assert len(bench.results) > 0
 
-    def test_results_saved_to_json(self, tmp_path, chimera):
+    def test_results_saved_to_db(self, tmp_path, chimera):
         from qebench import EmbeddingBenchmark
+        import sqlite3
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"], n_trials=1
@@ -469,11 +470,12 @@ class TestBatchRunner:
         batch_dirs = [d for d in tmp_path.iterdir() if d.is_dir() and d.name.startswith('batch_')]
         assert len(batch_dirs) == 1
         batch_dir = batch_dirs[0]
-        assert (batch_dir / "runs.json").exists()
-        with open(batch_dir / "runs.json") as f:
-            data = json.load(f)
-        assert len(data) >= 1
-        assert data[0]['algorithm'] == 'minorminer'
+        # New pipeline: SQLite database + CSV export (no runs.json)
+        assert (batch_dir / "results.db").exists()
+        with sqlite3.connect(batch_dir / "results.db") as conn:
+            rows = conn.execute("SELECT algorithm FROM runs").fetchall()
+        assert len(rows) >= 1
+        assert rows[0][0] == 'minorminer'
 
     def test_results_saved_to_csv(self, tmp_path, chimera):
         from qebench import EmbeddingBenchmark
@@ -607,32 +609,37 @@ class TestResultsManager:
         assert 'timestamp' in saved
 
     def test_runs_csv_excludes_embeddings(self, tmp_path, chimera, K4):
-        """runs.csv should not contain the embedding column."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        """runs.csv should not contain the embedding or chain_lengths columns."""
+        from qebench import EmbeddingBenchmark
         import pandas as pd
-        results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4", trial=i) for i in range(2)]
-        mgr = ResultsManager(str(tmp_path))
-        batch_dir = mgr.create_batch()
-        mgr.save_results(results, batch_dir)
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        bench.run_full_benchmark(
+            problems=[("K4", K4)], methods=["minorminer"], n_trials=2,
+            topology_name="chimera_test",
+        )
+        batch_dirs = [d for d in tmp_path.iterdir() if d.is_dir() and d.name.startswith('batch_')]
+        batch_dir = batch_dirs[0]
         df = pd.read_csv(batch_dir / "runs.csv")
         assert 'embedding' not in df.columns
         assert 'chain_lengths' not in df.columns
         assert 'algorithm' in df.columns
         assert len(df) == 2
 
-    def test_runs_json_includes_embeddings(self, tmp_path, chimera, K4):
-        """runs.json should contain the embedding for each run."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
-        results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4")]
-        mgr = ResultsManager(str(tmp_path))
-        batch_dir = mgr.create_batch()
-        mgr.save_results(results, batch_dir)
-        with open(batch_dir / "runs.json") as f:
-            data = json.load(f)
-        assert 'embedding' in data[0]
-        assert data[0]['embedding'] is not None
+    def test_worker_jsonl_includes_embeddings(self, tmp_path, chimera, K4):
+        """Worker JSONL files should contain the full embedding for each run."""
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        bench.run_full_benchmark(
+            problems=[("K4", K4)], methods=["minorminer"], n_trials=1,
+        )
+        batch_dirs = [d for d in tmp_path.iterdir() if d.is_dir() and d.name.startswith('batch_')]
+        batch_dir = batch_dirs[0]
+        jfiles = sorted((batch_dir / "workers").glob("worker_*.jsonl"))
+        assert len(jfiles) >= 1
+        with open(jfiles[0]) as f:
+            data = json.loads(f.readline())
+        assert 'embedding' in data
+        assert data['embedding'] is not None
 
     def test_summary_csv_groups_correctly(self, tmp_path, chimera, K4, K8):
         """summary.csv should have one row per (algorithm, problem_name, topology_name)."""

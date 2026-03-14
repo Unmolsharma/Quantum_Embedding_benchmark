@@ -31,7 +31,8 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-from qebench.registry import ALGORITHM_REGISTRY, validate_embedding, list_algorithms
+from qebench.registry import ALGORITHM_REGISTRY, list_algorithms
+from qebench.validation import validate_layer1, validate_layer2
 from qebench.graphs import load_test_graphs as _load_test_graphs, parse_graph_selection, verify_manifest
 from qebench.results import ResultsManager
 from qebench.topologies import get_topology, TOPOLOGY_REGISTRY
@@ -218,19 +219,42 @@ def benchmark_one(source_graph: nx.Graph,
             )
 
         # ------------------------------------------------------------------
+        # Layer 2 — type/format validation (always, before anything else).
+        # Catches numpy int leakage, bad chain types, NaN times, etc.
+        # If it fails, status is INVALID_OUTPUT — no further processing.
+        # ------------------------------------------------------------------
+        layer2 = validate_layer2(result, source_graph, target_graph)
+        if not layer2.passed:
+            _claimed_success = result.get('success', '<absent>')
+            _emb_size = len(result.get('embedding') or {})
+            return EmbeddingResult(
+                **fail_base,
+                status='INVALID_OUTPUT',
+                wall_time=result.get('time', 0.0),
+                cpu_time=_cpu_elapsed,
+                algorithm_version=algo_version,
+                error=(
+                    f"Algorithm claimed success={_claimed_success}, "
+                    f"embedding_size={_emb_size}; "
+                    f"Layer 2 [{layer2.check_name}]: {layer2.detail}"
+                ),
+            )
+
+        # ------------------------------------------------------------------
         # Trustless success inference — never trust the algorithm's own flag.
         # Infer from embedding presence if the key is absent.
         # ------------------------------------------------------------------
         claimed_success = result.get('success', len(result.get('embedding', {})) > 0)
         raw_embedding = result.get('embedding') or None  # treat {} as falsy
         is_partial = result.get('partial', False)
+        layer1 = None  # set below only when structural validation runs
 
         if claimed_success and raw_embedding:
             # Validate against the target graph the algorithm actually used
             # (OCT self-reports chimera_graph when it resizes the topology)
             validation_target = result.get('chimera_graph', target_graph)
-            is_valid = validate_embedding(raw_embedding, source_graph, validation_target)
-            if is_valid:
+            layer1 = validate_layer1(raw_embedding, source_graph, validation_target)
+            if layer1.passed:
                 status = 'SUCCESS'
                 success = True
             else:
@@ -276,6 +300,16 @@ def benchmark_one(source_graph: nx.Graph,
                 overlap_qubit_iterations=result.get('overlap_qubit_iterations'),
             )
         else:
+            # For INVALID_OUTPUT from Layer 1, use the specific check failure detail.
+            # For other failures (TIMEOUT, CRASH, etc.), use the algorithm's error.
+            if status == 'INVALID_OUTPUT' and layer1 is not None and not layer1.passed:
+                error_msg = (
+                    f"Algorithm claimed success=True, "
+                    f"embedding_size={len(raw_embedding)}; "
+                    f"Layer 1 [{layer1.check_name}]: {layer1.detail}"
+                )
+            else:
+                error_msg = result.get('error', f"status={status}")
             return EmbeddingResult(
                 **fail_base,
                 status=status,
@@ -285,7 +319,7 @@ def benchmark_one(source_graph: nx.Graph,
                 embedding=raw_embedding,  # preserve partial/invalid output for diagnostics
                 algorithm_version=algo_version,
                 partial=is_partial,
-                error=result.get('error', f"status={status}"),
+                error=error_msg,
                 metadata=result.get('metadata'),
             )
 
