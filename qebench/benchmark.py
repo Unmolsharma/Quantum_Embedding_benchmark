@@ -10,6 +10,7 @@ Batch runner:
 """
 
 import time
+import random as _random
 try:
     import resource as _resource
     _HAS_RESOURCE = True
@@ -42,35 +43,41 @@ class EmbeddingResult:
     problem_name: str
     topology_name: str
     trial: int
-    
-    # Core result
+
+    # Always populated by the runner:
     success: bool
-    embedding: Optional[Dict] = None     # {source_node: [target_qubits, ...]}
-    embedding_time: float = 0.0          # wall-clock seconds
-    cpu_time: float = 0.0                # CPU seconds (children for subprocess algos)
+    status: str = 'FAILURE'    # 'SUCCESS' | 'INVALID_OUTPUT' | 'TIMEOUT' | 'CRASH' | 'OOM' | 'FAILURE'
+    wall_time: float = 0.0     # wall-clock seconds (runner-measured)
+    cpu_time: float = 0.0      # CPU seconds (RUSAGE_CHILDREN for subprocess; process_time otherwise)
     is_valid: bool = False
-    
-    # Embedding quality metrics
+    embedding: Optional[Dict] = None  # {source_node: [target_qubits, ...]}
+
+    # Embedding quality metrics (populated on SUCCESS only):
     chain_lengths: List[int] = field(default_factory=list)
     max_chain_length: int = 0
     avg_chain_length: float = 0.0
     total_qubits_used: int = 0
     total_couplers_used: int = 0
-    
-    # Problem metadata
+
+    # Problem metadata:
     problem_nodes: int = 0
     problem_edges: int = 0
     problem_density: float = 0.0
-    
-    # Error handling
-    error_message: Optional[str] = None
+
+    # Algorithm metadata:
+    algorithm_version: str = "unknown"
+
+    # Failure / diagnostic fields:
+    partial: bool = False              # True if embedding has overlaps (timeout case)
+    error: Optional[str] = None        # traceback or error message on failure
+    metadata: Optional[Dict] = None    # anything else the algorithm wants to report
 
     # Algorithmic operation counters — hardware-agnostic work metrics.
     # None means the algorithm does not report this counter; 0 is a valid value.
-    target_node_visits: Optional[int] = None        # search effort: target graph nodes visited during embedding
-    cost_function_evaluations: Optional[int] = None # decision effort: cost function calls made
-    embedding_state_mutations: Optional[int] = None # editing effort: times the embedding state was modified
-    overlap_qubit_iterations: Optional[int] = None  # congestion effort: overlap-resolving iterations (iterative algorithms only)
+    target_node_visits: Optional[int] = None        # search effort
+    cost_function_evaluations: Optional[int] = None # decision effort
+    embedding_state_mutations: Optional[int] = None # editing effort
+    overlap_qubit_iterations: Optional[int] = None  # congestion effort (iterative algos only)
     
     def to_dict(self):
         """Convert to dict. Embedding stored as JSON string for CSV compatibility."""
@@ -181,46 +188,97 @@ def benchmark_one(source_graph: nx.Graph,
                 (_rusage_after.ru_stime - _rusage_before.ru_stime)
             )
 
-        if result is None or 'embedding' not in result:
+        algo_version = getattr(algo, 'version', 'unknown')
+
+        if result is None:
             return EmbeddingResult(
                 **fail_base,
-                embedding_time=timeout,
+                status='FAILURE',
+                wall_time=timeout,
                 cpu_time=_cpu_elapsed,
-                error_message="No embedding found"
+                algorithm_version=algo_version,
+                error="Algorithm returned None",
             )
 
-        emb = result['embedding']
-        metrics = compute_embedding_metrics(emb, target_graph)
+        # ------------------------------------------------------------------
+        # Trustless success inference — never trust the algorithm's own flag.
+        # Infer from embedding presence if the key is absent.
+        # ------------------------------------------------------------------
+        claimed_success = result.get('success', len(result.get('embedding', {})) > 0)
+        raw_embedding = result.get('embedding') or None  # treat {} as falsy
+        is_partial = result.get('partial', False)
 
-        # Validate against the target graph the algorithm actually used
-        validation_target = result.get('chimera_graph', target_graph)
-        is_valid = validate_embedding(emb, source_graph, validation_target)
+        if claimed_success and raw_embedding:
+            # Validate against the target graph the algorithm actually used
+            # (OCT self-reports chimera_graph when it resizes the topology)
+            validation_target = result.get('chimera_graph', target_graph)
+            is_valid = validate_embedding(raw_embedding, source_graph, validation_target)
+            if is_valid:
+                status = 'SUCCESS'
+                success = True
+            else:
+                status = 'INVALID_OUTPUT'
+                success = False
+        elif is_partial:
+            # Algorithm hit a limit but returned a partial state — preserve for
+            # diagnostic telemetry but do not pass to metrics calculators.
+            status = result.get('status', 'TIMEOUT')
+            success = False
+            raw_embedding = None
+        else:
+            status = result.get('status', 'FAILURE')
+            success = False
 
-        return EmbeddingResult(
-            algorithm=algorithm,
-            problem_name=problem_name,
-            topology_name=topology_name,
-            trial=trial,
-            success=True,
-            embedding=emb,
-            embedding_time=result['time'],
-            cpu_time=_cpu_elapsed,
-            is_valid=is_valid,
-            chain_lengths=metrics['chain_lengths'],
-            max_chain_length=metrics['max_chain_length'],
-            avg_chain_length=metrics['avg_chain_length'],
-            total_qubits_used=metrics['total_qubits_used'],
-            total_couplers_used=metrics['total_couplers_used'],
-            problem_nodes=n_nodes,
-            problem_edges=n_edges,
-            problem_density=density,
-        )
+        if success and raw_embedding:
+            metrics = compute_embedding_metrics(raw_embedding, validation_target)
+            return EmbeddingResult(
+                algorithm=algorithm,
+                problem_name=problem_name,
+                topology_name=topology_name,
+                trial=trial,
+                success=True,
+                status=status,
+                wall_time=result.get('time', 0.0),
+                cpu_time=_cpu_elapsed,
+                is_valid=True,
+                embedding=raw_embedding,
+                chain_lengths=metrics['chain_lengths'],
+                max_chain_length=metrics['max_chain_length'],
+                avg_chain_length=metrics['avg_chain_length'],
+                total_qubits_used=metrics['total_qubits_used'],
+                total_couplers_used=metrics['total_couplers_used'],
+                problem_nodes=n_nodes,
+                problem_edges=n_edges,
+                problem_density=density,
+                algorithm_version=algo_version,
+                partial=False,
+                metadata=result.get('metadata'),
+                target_node_visits=result.get('target_node_visits'),
+                cost_function_evaluations=result.get('cost_function_evaluations'),
+                embedding_state_mutations=result.get('embedding_state_mutations'),
+                overlap_qubit_iterations=result.get('overlap_qubit_iterations'),
+            )
+        else:
+            return EmbeddingResult(
+                **fail_base,
+                status=status,
+                wall_time=result.get('time', 0.0),
+                cpu_time=_cpu_elapsed,
+                is_valid=False,
+                embedding=raw_embedding,  # preserve partial/invalid output for diagnostics
+                algorithm_version=algo_version,
+                partial=is_partial,
+                error=result.get('error', f"status={status}"),
+                metadata=result.get('metadata'),
+            )
 
     except Exception as e:
         return EmbeddingResult(
             **fail_base,
-            embedding_time=timeout,
-            error_message=str(e)
+            status='CRASH',
+            wall_time=timeout,
+            algorithm_version=getattr(algo, 'version', 'unknown'),
+            error=str(e),
         )
 
 
@@ -302,7 +360,7 @@ class EmbeddingBenchmark:
     # Use @register_algorithm("name") to add new algorithms.
     # The benchmark engine discovers them automatically from ALGORITHM_REGISTRY.
     
-    def run_full_benchmark(self, problems: List[Tuple[str, nx.Graph]] = None, 
+    def run_full_benchmark(self, problems: List[Tuple[str, nx.Graph]] = None,
                           timeout: float = 60.0,
                           methods: Optional[List[str]] = None,
                           n_trials: int = 1,
@@ -310,7 +368,8 @@ class EmbeddingBenchmark:
                           graph_selection: str = None,
                           topology_name: str = "",
                           topologies: Optional[List[str]] = None,
-                          batch_note: str = ""):
+                          batch_note: str = "",
+                          seed: int = 42):
         """
         Run complete benchmark suite.
 
@@ -325,6 +384,11 @@ class EmbeddingBenchmark:
             topologies: List of registered topology names for multi-topology runs.
                         Overrides target_graph/topology_name if provided.
             batch_note: Human-readable note describing this run.
+            seed: Master seed for the run. A random.Random RNG is seeded with
+                  this value and used to draw an independent seed for every
+                  benchmark_one() call, keeping the full run reproducible while
+                  giving each (problem, algorithm, topology, trial) combination a
+                  distinct seed. Default 42.
 
         Returns:
             Path to the batch directory where results were saved, or None if no
@@ -401,18 +465,23 @@ class EmbeddingBenchmark:
         warmup_str = f" (+ {warmup_trials} warm-up)" if warmup_trials > 0 else ""
         print(f"Starting benchmark: {len(problems)} problems × {len(valid_methods)} algorithms{topo_str}{trials_str}{warmup_str} = {total_runs} runs")
         print("=" * 80)
-        
-        for topo_label, target_graph, topo_name in topo_list:
+
+        # One RNG seeded from the master seed. Every benchmark_one() call draws
+        # its own independent seed from this RNG, so each (problem, algo, topo,
+        # trial) gets a distinct seed while the full run is reproducible.
+        _rng = _random.Random(seed)
+
+        for _, target_graph, topo_name in topo_list:
             if len(topo_list) > 1:
                 print(f"\n{'='*80}")
                 print(f"Topology: {topo_name} ({target_graph.number_of_nodes()} qubits, "
                       f"{target_graph.number_of_edges()} couplers)")
                 print(f"{'='*80}")
-            
+
             for problem_name, source_graph in problems:
                 print(f"\nProblem: {problem_name} (n={source_graph.number_of_nodes()}, "
                       f"e={source_graph.number_of_edges()})")
-                
+
                 for algo_name in valid_methods:
                     # Warm-up trials (results discarded)
                     for w in range(warmup_trials):
@@ -421,33 +490,34 @@ class EmbeddingBenchmark:
                         benchmark_one(
                             source_graph, target_graph, algo_name,
                             timeout=timeout, problem_name=problem_name,
-                            topology_name=topo_name, trial=-1
+                            topology_name=topo_name, trial=-1,
+                            seed=_rng.randint(0, 2**31 - 1),
                         )
                         print("(discarded)")
-                    
+
                     # Measured trials
                     for trial in range(n_trials):
                         current_run += 1
                         trial_str = f" [trial {trial+1}/{n_trials}]" if n_trials > 1 else ""
                         topo_tag = f" [{topo_name}]" if len(topo_list) > 1 else ""
                         print(f"  [{current_run}/{total_runs}] Running {algo_name}{trial_str}{topo_tag}...", end=" ")
-                        
                         result = benchmark_one(
                             source_graph, target_graph, algo_name,
                             timeout=timeout, problem_name=problem_name,
-                            topology_name=topo_name, trial=trial
+                            topology_name=topo_name, trial=trial,
+                            seed=_rng.randint(0, 2**31 - 1),
                         )
                         
                         self.results.append(result)
                         
                         if result.success:
                             valid_str = " ✓valid" if result.is_valid else " ✗invalid"
-                            print(f"✓ wall={result.embedding_time:.3f}s "
+                            print(f"✓ wall={result.wall_time:.3f}s "
                                   f"cpu={result.cpu_time:.3f}s, "
                                   f"avg_chain={result.avg_chain_length:.2f}, "
                                   f"qubits={result.total_qubits_used}{valid_str}")
                         else:
-                            print(f"✗ Failed: {result.error_message}")
+                            print(f"✗ Failed: {result.error}")
         
         print("\n" + "=" * 80)
         print("Benchmark complete!")

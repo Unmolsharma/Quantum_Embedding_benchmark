@@ -173,7 +173,7 @@ class ResultsManager:
             }
             
             if n_success > 0:
-                for metric in ['embedding_time', 'avg_chain_length', 'max_chain_length',
+                for metric in ['wall_time', 'avg_chain_length', 'max_chain_length',
                                'total_qubits_used', 'total_couplers_used']:
                     vals = successful[metric].astype(float)
                     row[f'{metric}_mean'] = float(vals.mean())
@@ -182,7 +182,7 @@ class ResultsManager:
                 
                 row['valid_rate'] = float(successful['is_valid'].mean())
             else:
-                for metric in ['embedding_time', 'avg_chain_length', 'max_chain_length',
+                for metric in ['wall_time', 'avg_chain_length', 'max_chain_length',
                                'total_qubits_used', 'total_couplers_used']:
                     row[f'{metric}_mean'] = None
                     row[f'{metric}_std'] = None
@@ -240,7 +240,7 @@ class ResultsManager:
         
         if n_success > 0:
             import numpy as np
-            times = [r.embedding_time for r in results if r.success]
+            times = [r.wall_time for r in results if r.success]
             chains = [r.avg_chain_length for r in results if r.success]
             qubits = [r.total_qubits_used for r in results if r.success]
             lines.append(f"- Embedding time: **{np.mean(times):.4f}s** mean ± {np.std(times):.4f}s")

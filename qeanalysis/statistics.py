@@ -258,7 +258,7 @@ def correlation_matrix(df: pd.DataFrame,
         graph_props = ['problem_nodes', 'problem_edges', 'problem_density']
     if embed_metrics is None:
         embed_metrics = [
-            'embedding_time', 'avg_chain_length',
+            'wall_time', 'avg_chain_length',
             'max_chain_length', 'total_qubits_used'
         ]
 

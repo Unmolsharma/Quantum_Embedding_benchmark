@@ -8,7 +8,7 @@ Adds derived columns not present in runs.csv:
   qubit_overhead_ratio  — total_qubits_used / problem_nodes
   coupler_overhead_ratio — total_couplers_used / problem_edges
   max_to_avg_chain_ratio — max_chain_length / avg_chain_length
-  is_timeout            — embedding_time >= 0.95 * timeout (from config)
+  is_timeout            — wall_time >= 0.95 * timeout (from config)
 """
 
 import json
@@ -23,7 +23,7 @@ from typing import Dict, Optional, Tuple
 
 _REQUIRED_COLUMNS = frozenset({
     'algorithm', 'problem_name', 'topology_name', 'trial',
-    'success', 'is_valid', 'embedding_time',
+    'success', 'is_valid', 'wall_time',
     'avg_chain_length', 'max_chain_length',
     'total_qubits_used', 'total_couplers_used',
     'problem_nodes', 'problem_edges', 'problem_density',
@@ -96,7 +96,7 @@ def _derive_columns(df: pd.DataFrame, timeout: float = 60.0) -> pd.DataFrame:
     )
 
     # Timeout flag (allow 5% tolerance)
-    df['is_timeout'] = df['embedding_time'] >= (timeout * 0.95)
+    df['is_timeout'] = df['wall_time'] >= (timeout * 0.95)
 
     return df
 

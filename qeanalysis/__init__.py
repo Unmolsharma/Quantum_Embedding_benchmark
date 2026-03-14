@@ -173,7 +173,7 @@ class BenchmarkAnalysis:
         return plot_heatmap(self._df, metric,
                             output_dir=self.figures_dir, save=save)
 
-    def plot_scaling(self, metric: str = 'embedding_time',
+    def plot_scaling(self, metric: str = 'wall_time',
                      x: str = 'problem_nodes', log: bool = False,
                      save: bool = True) -> plt.Figure:
         return plot_scaling(self._df, metric, x, log,
@@ -184,7 +184,7 @@ class BenchmarkAnalysis:
         return plot_density_hardness(self._df, metric,
                                      output_dir=self.figures_dir, save=save)
 
-    def plot_pareto(self, x: str = 'embedding_time',
+    def plot_pareto(self, x: str = 'wall_time',
                     y: str = 'avg_chain_length',
                     save: bool = True) -> plt.Figure:
         return plot_pareto(self._df, x, y,
@@ -236,7 +236,7 @@ class BenchmarkAnalysis:
                 'tab:rank_chain',
             ),
             'rank_table_time': (
-                self.rank_table('embedding_time'),
+                self.rank_table('wall_time'),
                 'Algorithm rank by embedding time',
                 'tab:rank_time',
             ),
@@ -246,7 +246,7 @@ class BenchmarkAnalysis:
                 'tab:category_chain',
             ),
             'category_breakdown_time': (
-                self.summary_by_category('embedding_time'),
+                self.summary_by_category('wall_time'),
                 'Mean embedding time by graph category',
                 'tab:category_time',
             ),
@@ -292,13 +292,13 @@ class BenchmarkAnalysis:
         # ── Plots ──────────────────────────────────────────────────────────────
         plot_tasks = [
             ('Heatmap (chain length)',   lambda: self.plot_heatmap('avg_chain_length')),
-            ('Heatmap (time)',           lambda: self.plot_heatmap('embedding_time')),
-            ('Scaling: time vs nodes',  lambda: self.plot_scaling('embedding_time', 'problem_nodes')),
+            ('Heatmap (time)',           lambda: self.plot_heatmap('wall_time')),
+            ('Scaling: time vs nodes',  lambda: self.plot_scaling('wall_time', 'problem_nodes')),
             ('Scaling: chain vs nodes', lambda: self.plot_scaling('avg_chain_length', 'problem_nodes')),
             ('Density hardness',        lambda: self.plot_density_hardness()),
             ('Pareto frontier',         lambda: self.plot_pareto()),
             ('Distributions (chain)',   lambda: self.plot_distributions('avg_chain_length')),
-            ('Distributions (time)',    lambda: self.plot_distributions('embedding_time')),
+            ('Distributions (time)',    lambda: self.plot_distributions('wall_time')),
             ('Consistency (CV)',        lambda: self.plot_consistency()),
             ('Topology comparison',     lambda: self.plot_topology_comparison()),
             ('Chain distribution',      lambda: self.plot_chain_distribution()),

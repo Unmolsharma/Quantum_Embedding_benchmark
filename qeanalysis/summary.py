@@ -53,10 +53,10 @@ def overall_summary(df: pd.DataFrame) -> pd.DataFrame:
         }
 
         if n_success > 0:
-            row['time_mean']   = float(success_grp['embedding_time'].mean())
-            row['time_std']    = float(success_grp['embedding_time'].std())
-            row['time_median'] = float(success_grp['embedding_time'].median())
-            row['cv_time']     = _cv(success_grp['embedding_time'])
+            row['time_mean']   = float(success_grp['wall_time'].mean())
+            row['time_std']    = float(success_grp['wall_time'].std())
+            row['time_median'] = float(success_grp['wall_time'].median())
+            row['cv_time']     = _cv(success_grp['wall_time'])
             row['chain_mean']  = float(success_grp['avg_chain_length'].mean())
             row['chain_std']   = float(success_grp['avg_chain_length'].std())
             row['chain_median']= float(success_grp['avg_chain_length'].median())

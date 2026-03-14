@@ -15,6 +15,7 @@ Adding a new algorithm:
 """
 
 import time
+import logging
 import os
 import subprocess
 import tempfile
@@ -23,6 +24,8 @@ import dwave_networkx as dnx
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
@@ -86,7 +89,14 @@ class EmbeddingAlgorithm(ABC):
             Or None if embedding fails.
         """
         pass
-    
+
+    _uses_subprocess: bool = False
+
+    @property
+    def version(self) -> str:
+        """Algorithm version string. Override in subclasses to tag results."""
+        return "unknown"
+
     @property
     def description(self) -> str:
         """Short human-readable description of the algorithm."""
@@ -176,93 +186,91 @@ def infer_chimera_dims(target_graph: nx.Graph) -> Optional[Tuple[int, int, int]]
 @register_algorithm("minorminer")
 class MinorMinerAlgorithm(EmbeddingAlgorithm):
     """D-Wave minorminer — industry-standard heuristic embedding."""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        start_time = time.time()
         try:
             import minorminer
-            
-            start_time = time.time()
+            seed = kwargs.get('seed', 42)
             embedding = minorminer.find_embedding(
                 list(source_graph.edges()),
                 list(target_graph.edges()),
                 timeout=timeout,
-                verbose=0
+                verbose=0,
+                random_seed=seed,
             )
             elapsed = time.time() - start_time
-            
             if not embedding:
-                return None
-            
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
             return {'embedding': embedding, 'time': elapsed}
         except Exception as e:
-            print(f"minorminer error: {e}")
-            return None
+            logger.error("minorminer error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time, 'success': False, 'status': 'FAILURE'}
+
 
 @register_algorithm("minorminer-aggressive")
 class MinorMinerAggressive(EmbeddingAlgorithm):
     """CMR with more restarts — better quality, slower. (tries=50, max_no_improve=20)"""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        start_time = time.time()
         try:
             import minorminer
-            
-            start_time = time.time()
+            seed = kwargs.get('seed', 42)
             embedding = minorminer.find_embedding(
                 list(source_graph.edges()),
                 list(target_graph.edges()),
                 timeout=timeout,
                 verbose=0,
                 tries=50,
-                max_no_improve=20,
+                max_no_improvement=20,
+                random_seed=seed,
             )
             elapsed = time.time() - start_time
-            
             if not embedding:
-                return None
-            
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
             return {'embedding': embedding, 'time': elapsed}
         except Exception as e:
-            print(f"minorminer-aggressive error: {e}")
-            return None
+            logger.error("minorminer-aggressive error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time, 'success': False, 'status': 'FAILURE'}
 
 
 @register_algorithm("minorminer-fast")
 class MinorMinerFast(EmbeddingAlgorithm):
     """CMR with fewer restarts — fast but lower quality. (tries=3, max_no_improve=3)"""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        start_time = time.time()
         try:
             import minorminer
-            
-            start_time = time.time()
+            seed = kwargs.get('seed', 42)
             embedding = minorminer.find_embedding(
                 list(source_graph.edges()),
                 list(target_graph.edges()),
                 timeout=timeout,
                 verbose=0,
                 tries=3,
-                max_no_improve=3,
+                max_no_improvement=3,
+                random_seed=seed,
             )
             elapsed = time.time() - start_time
-            
             if not embedding:
-                return None
-            
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
             return {'embedding': embedding, 'time': elapsed}
         except Exception as e:
-            print(f"minorminer-fast error: {e}")
-            return None
+            logger.error("minorminer-fast error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time, 'success': False, 'status': 'FAILURE'}
 
 
 @register_algorithm("minorminer-chainlength")
 class MinorMinerChainLength(EmbeddingAlgorithm):
     """CMR optimised for short chains — slower but cleaner. (tries=20, chainlength_patience=20)"""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        start_time = time.time()
         try:
             import minorminer
-            
-            start_time = time.time()
+            seed = kwargs.get('seed', 42)
             embedding = minorminer.find_embedding(
                 list(source_graph.edges()),
                 list(target_graph.edges()),
@@ -270,58 +278,54 @@ class MinorMinerChainLength(EmbeddingAlgorithm):
                 verbose=0,
                 tries=20,
                 chainlength_patience=20,
+                random_seed=seed,
             )
             elapsed = time.time() - start_time
-            
             if not embedding:
-                return None
-            
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
             return {'embedding': embedding, 'time': elapsed}
         except Exception as e:
-            print(f"minorminer-chainlength error: {e}")
-            return None
+            logger.error("minorminer-chainlength error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time, 'success': False, 'status': 'FAILURE'}
             
 @register_algorithm("clique")
 class CliqueEmbeddingAlgorithm(EmbeddingAlgorithm):
     """D-Wave clique embedding — topology-aware deterministic baseline."""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        start_time = time.time()
         try:
             from minorminer.busclique import find_clique_embedding
-            
-            start_time = time.time()
-            # find_clique_embedding takes number of nodes for a complete graph,
-            # or a source graph directly
             raw = find_clique_embedding(source_graph, target_graph)
             elapsed = time.time() - start_time
-            
             if not raw:
-                return None
-            
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
             # busclique returns tuples — convert to lists for consistency
             embedding = {k: list(v) for k, v in raw.items()}
-            
             return {'embedding': embedding, 'time': elapsed}
         except Exception as e:
-            print(f"clique embedding error: {e}")
-            return None
+            logger.error("clique embedding error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time, 'success': False, 'status': 'FAILURE'}
 
 
 @register_algorithm("atom")
 class AtomAlgorithm(EmbeddingAlgorithm):
     """ATOM — grows its own Chimera topology dynamically."""
-    
+
+    _uses_subprocess = True
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
+        atom_dir = Path("./algorithms/atom")
+        atom_exe = atom_dir / "main"
+        start_time = time.time()
+
+        if not atom_exe.exists():
+            logger.warning("ATOM not compiled. Run: cd algorithms/atom && make")
+            return {'embedding': {}, 'time': 0.0, 'success': False, 'status': 'FAILURE'}
+
+        atom_exe = atom_exe.resolve()
+        source_file = None
         try:
-            atom_dir = Path("./algorithms/atom")
-            atom_exe = atom_dir / "main"
-            
-            if not atom_exe.exists():
-                print("⚠️  ATOM not compiled. Run: cd algorithms/atom && make")
-                return None
-            
-            atom_exe = atom_exe.resolve()
-            
             # Write source graph in ATOM format:
             # Line 1: number of nodes
             # Lines 2..n+1: node orderings (0, 1, ..., n-1)
@@ -334,8 +338,7 @@ class AtomAlgorithm(EmbeddingAlgorithm):
                 for u, v in source_graph.edges():
                     f.write(f"{u} {v}\n")
                 source_file = f.name
-            
-            start_time = time.time()
+
             try:
                 # capture_output=True captures stdout silently (no flooding)
                 result = subprocess.run(
@@ -344,211 +347,110 @@ class AtomAlgorithm(EmbeddingAlgorithm):
                     timeout=timeout, cwd=atom_dir
                 )
                 elapsed = time.time() - start_time
-                
-                os.unlink(source_file)
+            except subprocess.TimeoutExpired:
+                return {'embedding': {}, 'time': time.time() - start_time,
+                        'success': False, 'status': 'TIMEOUT'}
+            finally:
+                if source_file and os.path.exists(source_file):
+                    os.unlink(source_file)
                 results_txt = atom_dir / "Results.txt"
                 if results_txt.exists():
                     os.unlink(results_txt)
-                
-                # Parse embedding from stdout
-                # ATOM's print() outputs: "Embedding:" header, then
-                # "x y k color" per qubit, then "Requires N qubits"
-                # Each EB_Point has (x, y, k) = Chimera position, color = logical node
-                embedding = {}
-                topo_column = 0
-                
-                for line in result.stdout.strip().split('\n'):
-                    line = line.strip()
-                    if not line or line.startswith('Embedding') or line.startswith('Requires'):
+
+            # Parse embedding from stdout
+            # ATOM's print() outputs: "Embedding:" header, then
+            # "x y k color" per qubit, then "Requires N qubits"
+            # Each EB_Point has (x, y, k) = Chimera position, color = logical node
+            embedding = {}
+            topo_column = 0
+
+            for line in result.stdout.strip().split('\n'):
+                line = line.strip()
+                if not line or line.startswith('Embedding') or line.startswith('Requires'):
+                    continue
+                parts = line.split()
+                if len(parts) == 4:
+                    try:
+                        x, y, k, color = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
+                        topo_column = max(topo_column, y + 1)
+                        if color not in embedding:
+                            embedding[color] = []
+                        embedding[color].append((x, y, k))
+                    except ValueError:
                         continue
-                    parts = line.split()
-                    if len(parts) == 4:
-                        try:
-                            x, y, k, color = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
-                            topo_column = max(topo_column, y + 1)
-                            if color not in embedding:
-                                embedding[color] = []
-                            embedding[color].append((x, y, k))
-                        except ValueError:
-                            continue
-                
-                if not embedding:
-                    return None
-                
-                # Convert (x, y, k) tuples to linear Chimera qubit indices
-                # Index = x * topo_column * 8 + y * 8 + k
-                linear_embedding = {}
-                for color, positions in embedding.items():
-                    linear_embedding[color] = [
-                        x * topo_column * 8 + y * 8 + k
-                        for x, y, k in positions
-                    ]
-                
-                return {
-                    'embedding': linear_embedding,
-                    'time': elapsed,
-                    'method': 'ATOM',
-                }
-            except subprocess.TimeoutExpired:
-                os.unlink(source_file)
-                return None
+
+            if not embedding:
+                return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
+
+            # Convert (x, y, k) tuples to linear Chimera qubit indices
+            # Index = x * topo_column * 8 + y * 8 + k
+            linear_embedding = {
+                color: [x * topo_column * 8 + y * 8 + k for x, y, k in positions]
+                for color, positions in embedding.items()
+            }
+
+            return {
+                'embedding': linear_embedding,
+                'time': elapsed,
+                'method': 'ATOM',
+            }
         except Exception as e:
-            print(f"ATOM error: {e}")
-            return None
+            logger.error("ATOM error: %s", e)
+            return {'embedding': {}, 'time': time.time() - start_time,
+                    'success': False, 'status': 'FAILURE'}
 
 
 @register_algorithm("charme")
 class CharmeAlgorithm(EmbeddingAlgorithm):
     """CHARME — Python RL framework. Not callable via subprocess."""
-    
+
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
-        print("⚠️  CHARME is a Python RL framework, not a standalone binary.")
-        print("   Import its Python modules directly to use it.")
-        return None
-
-# PSSA (Probabilistic-Swap-Shift-Annealing) (inspired by paper, changed for D-wave hardware, placeholder until code is found)
-# Path-annealing minor embedding for Chimera, Pegasus, and Zephyr hardware.
-# Based on Sugie et al. (2020) arXiv:2004.03819, adapted for D-Wave topologies.
-#
-# SOURCE:  https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
-#
-# TO INSTALL (pick one):
-#   Option A — clone and install locally:
-#     git clone https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
-#     cd PSSA-Dwave-Implementation-
-#     pip install -e .
-#
-#   Option B — install directly from GitHub:
-#     pip install git+https://github.com/Unmolsharma/PSSA-Dwave-Implementation-
-#
-# DEPENDENCIES (installed automatically):
-#   dwave-networkx>=0.8
-#   minorminer>=0.2
-#
-# REGISTERED ALGORITHMS (available after install):
-#   "pssa"           — default, auto tmax
-#   "pssa-weighted"  — degree-weighted shifts, best for cubic/regular graphs
-#   "pssa-fast"      — tmax=50,000, good for large sweeps
-#   "pssa-thorough"  — tmax=2,000,000, best quality
-#
-# If not installed, these algorithms are silently skipped and a message
-# is printed to stdout explaining how to get them.
-# ──────────────────────────────────────────────────────────────────────────
-
-def _try_register_pssa():
-    try:
-        from pssa_dwave.improved_pssa import ImprovedPSSA, is_valid_embedding
-        from pssa_dwave.core import eemb, invert
-        import time as _time
-
-        class _PSSABase(EmbeddingAlgorithm):
-            _weighted       = False
-            _tmax_override  = None
-
-            def embed(self, source_graph, target_graph, **kwargs):
-                try:
-                    t0       = _time.time()
-                    topology = self._detect_topology(target_graph)
-
-                    algo = ImprovedPSSA(
-                        topology       = topology,
-                        tmax           = self._tmax_override,
-                        weighted       = self._weighted,
-                        hardware_graph = target_graph,
-                        verbose        = False,
-                    )
-                    result  = algo.run(source_graph)
-                    elapsed = _time.time() - t0
-
-                    if not result.success and result.eemb == 0:
-                        return None
-
-                    return {
-                        'embedding': result.phi,
-                        'time':      elapsed,
-                        'coverage':  result.coverage,
-                    }
-                except Exception as e:
-                    print(f"PSSA error: {e}")
-                    return None
-
-            def _detect_topology(self, H):
-                data = H.graph
-                if 'family' in data:
-                    fam = str(data['family']).lower()
-                    if 'chimera' in fam:  return 'chimera'
-                    if 'pegasus' in fam:  return 'pegasus'
-                    if 'zephyr'  in fam:  return 'zephyr'
-                avg_deg = sum(d for _, d in H.degree()) / max(H.number_of_nodes(), 1)
-                if avg_deg < 8:   return 'chimera'
-                if avg_deg < 18:  return 'pegasus'
-                return 'zephyr'
-
-        @register_algorithm("pssa")
-        class PSSADefault(_PSSABase):
-            """PSSA — auto topology detection, auto tmax."""
-            pass
-
-        @register_algorithm("pssa-weighted")
-        class PSSAWeighted(_PSSABase):
-            """PSSA with degree-weighted shifts — best for cubic/regular graphs."""
-            _weighted = True
-
-        @register_algorithm("pssa-fast")
-        class PSSAFast(_PSSABase):
-            """PSSA fast — tmax=50,000. Good for large sweeps."""
-            _tmax_override = 50_000
-
-        @register_algorithm("pssa-thorough")
-        class PSSAThorough(_PSSABase):
-            """PSSA thorough — tmax=2,000,000. Best quality."""
-            _tmax_override = 2_000_000
-
-        print("✓ PSSA algorithms registered (pssa, pssa-weighted, pssa-fast, pssa-thorough)")
-
-    except ImportError:
-        print(
-            "\n"
-            "⚠  PSSA algorithms unavailable — pssa_dwave is not installed.\n"
-            "\n"
-            "   To install:\n"
-            "     1. git clone https://github.com/Unmolsharma/PSSA-Dwave-Implementation-\n"
-            "     2. cd PSSA-Dwave-Implementation-\n"
-            "     3. pip install -e .\n"
-            "\n"
-            "   Or install directly from GitHub (no clone needed):\n"
-            "     pip install git+https://github.com/Unmolsharma/PSSA-Dwave-Implementation-\n"
-            "\n"
-            "   Then re-run your benchmark — pssa, pssa-weighted, pssa-fast,\n"
-            "   and pssa-thorough will appear automatically.\n"
-            "\n"
-            "   Requires: dwave-networkx>=0.8  minorminer>=0.2\n"
-        )
-
-_try_register_pssa()
+        logger.warning("CHARME is a Python RL framework and has not been wrapped yet. "
+                       "Import its Python modules directly to use it.")
+        return {'embedding': {}, 'time': 0.0, 'success': False, 'status': 'FAILURE'}
 
 
-def _make_oct_algorithm_class(algo_name: str, extra_flags: list, desc: str):
-    """Factory to create and register an OCT-suite algorithm class."""
-    
+def _make_oct_algorithm_class(algo_name: str, extra_flags: list, desc: str,
+                              supports_seed: bool = False):
+    """Factory to create and register an OCT-suite algorithm class.
+
+    For randomised variants (fast-oct, hybrid-oct), supports_seed=True enables
+    the caller to override the -s flag via kwargs['seed']. The default seed in
+    extra_flags is used when no seed is provided.
+    """
+
     class OctVariant(EmbeddingAlgorithm):
         __doc__ = desc
-        
+        _uses_subprocess = True
+        _supports_seed = supports_seed
+
         def embed(self, source_graph, target_graph, timeout=60.0,
                   chimera_dims=None, **kwargs):
+            oct_dir = Path("./algorithms/oct_based").resolve()
+            oct_exe = oct_dir / "embedding" / "driver"
+            start_time = time.time()
+
+            if not oct_exe.exists():
+                logger.warning("OCT-Based not compiled. Run: cd algorithms/oct_based && make")
+                return {'embedding': {}, 'time': 0.0, 'success': False, 'status': 'FAILURE'}
+
+            # Determine Chimera dimensions
+            dims = chimera_dims or infer_chimera_dims(target_graph) or (4, 4, 4)
+            c_m, c_n, c_t = dims
+            chimera_graph = dnx.chimera_graph(c_m, c_n, c_t)
+
+            # Build flags — allow seed override for randomised variants
+            flags = list(extra_flags)
+            if self._supports_seed and 'seed' in kwargs and kwargs['seed'] is not None:
+                seed_str = str(kwargs['seed'])
+                if '-s' in flags:
+                    flags[flags.index('-s') + 1] = seed_str
+                else:
+                    flags += ['-s', seed_str]
+
+            source_file = None
+            out_base = None
             try:
-                oct_dir = Path("./algorithms/oct_based").resolve()
-                oct_exe = oct_dir / "embedding" / "driver"
-                
-                if not oct_exe.exists():
-                    print("⚠️  OCT-Based not compiled. Run: cd algorithms/oct_based && make")
-                    return None
-                
-                # Determine Chimera dimensions
-                dims = chimera_dims or infer_chimera_dims(target_graph) or (4, 4, 4)
-                c_m, c_n, c_t = dims
-                chimera_graph = dnx.chimera_graph(c_m, c_n, c_t)
-                
                 # Write source graph in OCT format:
                 # Line 1: number of nodes
                 # Lines 2..n+1: node orderings (0, 1, ..., n-1)
@@ -562,79 +464,81 @@ def _make_oct_algorithm_class(algo_name: str, extra_flags: list, desc: str):
                     for u, v in source_graph.edges():
                         f.write(f"{u} {v}\n")
                     source_file = f.name
-                
-                out_base = tempfile.mktemp(dir=str(oct_dir), prefix="oct_out_")
-                
-                start_time = time.time()
+
+                with tempfile.NamedTemporaryFile(mode='w', dir=str(oct_dir),
+                                                 prefix="oct_out_", delete=False) as f:
+                    out_base = f.name
+
+                cmd = [str(oct_exe), '-a', algo_name,
+                       '-pfile', source_file,
+                       '-c', str(c_t), '-m', str(c_m), '-n', str(c_n),
+                       '-o', out_base] + flags
+
                 try:
-                    cmd = [str(oct_exe), '-a', algo_name,
-                           '-pfile', source_file,
-                           '-c', str(c_t), '-m', str(c_m), '-n', str(c_n),
-                           '-o', out_base] + extra_flags
-                    
                     subprocess.run(cmd, capture_output=True, text=True,
                                    timeout=timeout, cwd=str(oct_dir))
-                    
                     elapsed = time.time() - start_time
-                    
-                    emb_file = out_base + ".embedding"
-                    embedding = {}
-                    if os.path.exists(emb_file) and os.path.getsize(emb_file) > 0:
-                        with open(emb_file, 'r') as f:
-                            for line in f:
-                                line = line.strip()
-                                if ':' in line:
-                                    lp, pp = line.split(':', 1)
-                                    pp = pp.strip()
-                                    if pp:
-                                        if ',' in pp:
-                                            chain = [int(x.strip()) for x in pp.split(',') if x.strip()]
-                                        else:
-                                            chain = [int(x) for x in pp.split() if x]
-                                        if chain:
-                                            embedding[int(lp.strip())] = chain
-                    
-                    # Cleanup
-                    for p in [source_file, emb_file, out_base + ".timing", out_base]:
-                        if os.path.exists(p):
-                            os.unlink(p)
-                    
-                    if not embedding:
-                        return None
-                    
-                    return {
-                        'embedding': embedding,
-                        'time': elapsed,
-                        'chimera_dims': dims,
-                        'chimera_graph': chimera_graph,
-                        'algorithm': algo_name
-                    }
                 except subprocess.TimeoutExpired:
-                    for p in [source_file, out_base + ".embedding", out_base + ".timing", out_base]:
-                        if os.path.exists(p):
-                            os.unlink(p)
-                    return None
+                    return {'embedding': {}, 'time': time.time() - start_time,
+                            'success': False, 'status': 'TIMEOUT'}
+
+                emb_file = out_base + ".embedding"
+                embedding = {}
+                if os.path.exists(emb_file) and os.path.getsize(emb_file) > 0:
+                    with open(emb_file, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if ':' in line:
+                                lp, pp = line.split(':', 1)
+                                pp = pp.strip()
+                                if pp:
+                                    if ',' in pp:
+                                        chain = [int(x.strip()) for x in pp.split(',') if x.strip()]
+                                    else:
+                                        chain = [int(x) for x in pp.split() if x]
+                                    if chain:
+                                        embedding[int(lp.strip())] = chain
+
+                if not embedding:
+                    return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
+
+                return {
+                    'embedding': embedding,
+                    'time': elapsed,
+                    'chimera_dims': dims,
+                    'chimera_graph': chimera_graph,
+                    'algorithm': algo_name,
+                }
             except Exception as e:
-                print(f"OCT-{algo_name} error: {e}")
-                return None
-    
+                logger.error("OCT-%s error: %s", algo_name, e)
+                return {'embedding': {}, 'time': time.time() - start_time,
+                        'success': False, 'status': 'FAILURE'}
+            finally:
+                for p in [source_file, out_base,
+                          (out_base + ".embedding") if out_base else None,
+                          (out_base + ".timing") if out_base else None]:
+                    if p and os.path.exists(p):
+                        os.unlink(p)
+
     OctVariant.__name__ = f"Oct_{algo_name.replace('-', '_')}"
     OctVariant.__qualname__ = OctVariant.__name__
     return OctVariant
 
 
 # Register all OCT-suite algorithms
+# Tuple: (extra_flags, supports_seed, description)
+# supports_seed=True → -s flag is replaced with caller-supplied seed when provided
 _OCT_CONFIGS = {
-    'triad':             ([], 'TRIAD — deterministic, 2 qubits/node, handles dense graphs'),
-    'triad-reduce':      ([], 'Reduced TRIAD — TRIAD with chain reduction'),
-    'fast-oct':          (['-s', '42', '-r', '100'], 'Fast-OCT — randomized with seed/repeats'),
-    'fast-oct-reduce':   (['-s', '42', '-r', '100'], 'Reduced Fast-OCT'),
-    'hybrid-oct':        (['-s', '42', '-r', '100'], 'Hybrid-OCT — combined approach'),
-    'hybrid-oct-reduce': (['-s', '42', '-r', '100'], 'Reduced Hybrid-OCT'),
+    'triad':             ([], False, 'TRIAD — deterministic, 2 qubits/node, handles dense graphs'),
+    'triad-reduce':      ([], False, 'Reduced TRIAD — TRIAD with chain reduction'),
+    'fast-oct':          (['-s', '42', '-r', '100'], True,  'Fast-OCT — randomized with seed/repeats'),
+    'fast-oct-reduce':   (['-s', '42', '-r', '100'], True,  'Reduced Fast-OCT'),
+    'hybrid-oct':        (['-s', '42', '-r', '100'], True,  'Hybrid-OCT — combined approach'),
+    'hybrid-oct-reduce': (['-s', '42', '-r', '100'], True,  'Reduced Hybrid-OCT'),
 }
 
-for _name, (_flags, _desc) in _OCT_CONFIGS.items():
-    _cls = _make_oct_algorithm_class(_name, _flags, _desc)
+for _name, (_flags, _supports_seed, _desc) in _OCT_CONFIGS.items():
+    _cls = _make_oct_algorithm_class(_name, _flags, _desc, supports_seed=_supports_seed)
     register_algorithm(f"oct-{_name}")(_cls)
 
 # Also register "oct_based" as an alias for oct-triad (the most reliable default)

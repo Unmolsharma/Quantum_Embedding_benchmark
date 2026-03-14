@@ -146,7 +146,7 @@ class TestBenchmarkOne:
     def test_timing_is_positive(self, chimera, K4):
         from qebench import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
-        assert result.embedding_time > 0
+        assert result.wall_time > 0
 
     def test_different_graphs_different_results(self, chimera, K4, K8):
         """Larger graphs should generally use more qubits."""
@@ -181,11 +181,11 @@ class TestEmbeddingResult:
         d = result.to_dict()
         expected_keys = {
             'algorithm', 'problem_name', 'topology_name', 'trial',
-            'success', 'embedding', 'embedding_time', 'cpu_time', 'is_valid',
+            'success', 'status', 'wall_time', 'cpu_time', 'is_valid', 'embedding',
             'chain_lengths', 'max_chain_length', 'avg_chain_length',
             'total_qubits_used', 'total_couplers_used',
             'problem_nodes', 'problem_edges', 'problem_density',
-            'error_message',
+            'algorithm_version', 'partial', 'error', 'metadata',
             'target_node_visits', 'cost_function_evaluations',
             'embedding_state_mutations', 'overlap_qubit_iterations',
         }
@@ -208,7 +208,7 @@ class TestEmbeddingResult:
         result = EmbeddingResult(
             algorithm="test", problem_name="fail_test",
             topology_name="test", trial=0, success=False,
-            error_message="Test failure"
+            error="Test failure"
         )
         assert result.embedding is None
         assert result.success is False
@@ -663,7 +663,7 @@ class TestResultsManager:
         batch_dir = mgr.create_batch()
         mgr.save_results(results, batch_dir)
         df = pd.read_csv(batch_dir / "summary.csv")
-        for metric in ['embedding_time', 'avg_chain_length', 'max_chain_length',
+        for metric in ['wall_time', 'avg_chain_length', 'max_chain_length',
                        'total_qubits_used', 'total_couplers_used']:
             assert f'{metric}_mean' in df.columns
             assert f'{metric}_std' in df.columns
@@ -682,9 +682,9 @@ class TestResultsManager:
         mgr.save_results(results, batch_dir)
         df = pd.read_csv(batch_dir / "summary.csv")
         row = df.iloc[0]
-        times = [r.embedding_time for r in results]
-        assert abs(row['embedding_time_mean'] - np.mean(times)) < 1e-6
-        assert abs(row['embedding_time_median'] - np.median(times)) < 1e-6
+        times = [r.wall_time for r in results]
+        assert abs(row['wall_time_mean'] - np.mean(times)) < 1e-6
+        assert abs(row['wall_time_median'] - np.median(times)) < 1e-6
         assert row['n_trials'] == 5
         assert row['success_rate'] == 1.0
 

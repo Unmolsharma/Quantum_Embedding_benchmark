@@ -98,7 +98,7 @@ def plot_heatmap(df: pd.DataFrame,
 # ── 2. Scaling plot ──────────────────────────────────────────────────────────────
 
 def plot_scaling(df: pd.DataFrame,
-                 metric: str = 'embedding_time',
+                 metric: str = 'wall_time',
                  x: str = 'problem_nodes',
                  log: bool = False,
                  output_dir=None,
@@ -201,7 +201,7 @@ def _pareto_front(points: np.ndarray) -> np.ndarray:
 
 
 def plot_pareto(df: pd.DataFrame,
-                x: str = 'embedding_time',
+                x: str = 'wall_time',
                 y: str = 'avg_chain_length',
                 output_dir=None,
                 save: bool = False) -> plt.Figure:
@@ -355,7 +355,7 @@ def plot_consistency(df: pd.DataFrame,
         )
         return cv_per_prob.groupby('algorithm').mean()
 
-    cv_time  = _mean_cv('embedding_time')
+    cv_time  = _mean_cv('wall_time')
     cv_chain = _mean_cv('avg_chain_length')
 
     algos = sorted(set(cv_time.index) | set(cv_chain.index))
@@ -454,7 +454,7 @@ def plot_problem_deep_dive(df: pd.DataFrame,
     colors = [palette[a] for a in algos]
 
     for ax, metric, ylabel in [
-        (ax1, 'embedding_time',   'Embedding time (s)'),
+        (ax1, 'wall_time',   'Embedding time (s)'),
         (ax2, 'avg_chain_length', 'Avg chain length'),
     ]:
         vals = []
