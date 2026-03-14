@@ -4,6 +4,15 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-14 — Per-run log capture + runner logger (`qebench/loggers.py`)**
+- **`qebench/loggers.py`** — new module (no deps on algorithm or validation code). Exports `BatchLogger`, `capture_run`, `run_log_path`.
+- **`capture_run(log_path)`** — context manager that redirects `sys.stdout` and `sys.stderr` to a per-run log file for the duration of each `embed()` call. Restores original streams in `finally`. Safe for both sequential and parallel (per-process) use.
+- **Per-run log files** written to `logs/runs/{algo}__{problem}__{trial}__{seed}.log`. Filename encodes all four identifying components. A runner diagnostic footer (status, success, wall_time, error) is appended after `embed()` returns, clearly delimited from algorithm output.
+- **`BatchLogger`** — one instance per batch. Writes `logs/runner/{batch_id}.log` at DEBUG (every run completion). WARNING+ also goes to stderr so crashes/invalid-output runs surface in real time. `propagate=False` — never touches the root logger.
+- **Integrated into both execution paths**: sequential wraps each measured trial with `capture_run()` + `log_run()`; parallel workers do their own capture+footer, display loop calls `log_run_from_display()`.
+- **Not yet implemented** (deferred — see `TODO_LoggerFeatures.md`): suspension threshold / SKIPPED status; retention policy (delete SUCCESS logs after DB write); `ember logs` CLI retrieval. Suspension in parallel mode requires a shared multiprocessing flag and is non-trivial.
+- 38/38 smoke checks pass.
+
 **2026-03-14 — Multiprocessing + SHA-256 seed derivation**
 - **`n_workers` parameter** added to `run_full_benchmark()` (default 1). When `n_workers > 1`, a flat task list is pushed onto a `multiprocessing.Queue`; N worker processes each pull tasks and append results to their own `workers/worker_{pid}.jsonl`. Warmup trials are skipped with a warning in parallel mode.
 - **Display record pattern:** workers never print. Each worker pushes a lightweight completion record (algorithm, problem, trial, status, wall_time, avg_chain_length) onto a `result_queue`; the main process reads it and drives all output — verbose per-trial lines when `verbose=True`, an ASCII progress bar otherwise. `verbose` defaults to `True` for `n_workers=1` and `False` for `n_workers>1`.

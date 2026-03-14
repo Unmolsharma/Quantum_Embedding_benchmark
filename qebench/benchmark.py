@@ -36,6 +36,7 @@ from qebench.graphs import load_test_graphs as _load_test_graphs, parse_graph_se
 from qebench.results import ResultsManager
 from qebench.topologies import get_topology, TOPOLOGY_REGISTRY
 from qebench.compile import compile_batch
+from qebench.loggers import BatchLogger, capture_run, run_log_path
 
 
 @dataclass
@@ -317,7 +318,8 @@ def _derive_seed(root_seed: int, algorithm: str, problem_name: str,
 def _worker_process(task_queue: multiprocessing.Queue,
                     result_queue: multiprocessing.Queue,
                     workers_dir_str: str,
-                    batch_id: str) -> None:
+                    batch_id: str,
+                    logs_runs_dir_str: str) -> None:
     """Worker process: consume tasks, write JSONL, push display records.
 
     Pulls (source_graph, target_graph, algo_name, timeout, problem_name,
@@ -325,9 +327,11 @@ def _worker_process(task_queue: multiprocessing.Queue,
     receives a None sentinel, then exits.
 
     Workers never print anything — all output is driven by the main process
-    reading result_queue.
+    reading result_queue. Algorithm stdout/stderr is captured to a per-run
+    log file in logs/runs/ for the duration of each embed() call.
     """
     worker_file = Path(workers_dir_str) / f"worker_{os.getpid()}.jsonl"
+    logs_runs_dir = Path(logs_runs_dir_str)
     while True:
         task = task_queue.get()
         if task is None:  # sentinel — this worker's share is done
@@ -335,11 +339,27 @@ def _worker_process(task_queue: multiprocessing.Queue,
         (source_graph, target_graph, algo_name, timeout,
          problem_name, topo_name, trial, trial_seed) = task
 
-        result = benchmark_one(
-            source_graph, target_graph, algo_name,
-            timeout=timeout, problem_name=problem_name,
-            topology_name=topo_name, trial=trial, seed=trial_seed,
-        )
+        log_path = run_log_path(logs_runs_dir, algo_name, problem_name, trial, trial_seed)
+        with capture_run(log_path):
+            result = benchmark_one(
+                source_graph, target_graph, algo_name,
+                timeout=timeout, problem_name=problem_name,
+                topology_name=topo_name, trial=trial, seed=trial_seed,
+            )
+
+        # Append runner diagnostics footer after capture exits (not captured)
+        try:
+            with open(log_path, 'a') as _lf:
+                _lf.write('\n--- RUNNER DIAGNOSTICS ---\n')
+                _lf.write(f'status:    {result.status}\n')
+                _lf.write(f'success:   {result.success}\n')
+                _lf.write(f'is_valid:  {result.is_valid}\n')
+                _lf.write(f'wall_time: {result.wall_time:.4f}s\n')
+                _lf.write(f'cpu_time:  {result.cpu_time:.4f}s\n')
+                if result.error:
+                    _lf.write(f'error:     {result.error}\n')
+        except OSError:
+            pass
 
         # Full result → JSONL (the durable record)
         with open(worker_file, "a") as wf:
@@ -354,6 +374,7 @@ def _worker_process(task_queue: multiprocessing.Queue,
             'problem_name':     problem_name,
             'topology_name':    topo_name,
             'trial':            trial,
+            'seed':             trial_seed,
             'status':           result.status,
             'success':          result.success,
             'wall_time':        result.wall_time,
@@ -560,6 +581,12 @@ class EmbeddingBenchmark:
         workers_dir = batch_dir / "workers"
         workers_dir.mkdir(exist_ok=True)
 
+        batch_logger = BatchLogger(batch_dir, batch_id)
+        batch_logger.setup()
+        batch_logger.info(
+            f"Batch {batch_id} starting: {total_measured} planned runs, n_workers={n_workers}"
+        )
+
         topo_str = f" × {len(topo_list)} topologies" if len(topo_list) > 1 else ""
         trials_str = f" × {n_trials} trials" if n_trials > 1 else ""
         warmup_str = f" (+ {warmup_trials} warm-up)" if warmup_trials > 0 else ""
@@ -608,12 +635,17 @@ class EmbeddingBenchmark:
                             topo_tag = f" [{topo_name}]" if len(topo_list) > 1 else ""
                             if verbose:
                                 print(f"  [{current_run}/{total_runs}] Running {algo_name}{trial_str}{topo_tag}...", end=" ")
-                            result = benchmark_one(
-                                source_graph, target_graph, algo_name,
-                                timeout=timeout, problem_name=problem_name,
-                                topology_name=topo_name, trial=trial,
-                                seed=trial_seed,
-                            )
+
+                            log_path = batch_logger.run_log_path(algo_name, problem_name, trial, trial_seed)
+                            with capture_run(log_path):
+                                result = benchmark_one(
+                                    source_graph, target_graph, algo_name,
+                                    timeout=timeout, problem_name=problem_name,
+                                    topology_name=topo_name, trial=trial,
+                                    seed=trial_seed,
+                                )
+                            batch_logger.append_footer(log_path, result)
+                            batch_logger.log_run(result, trial_seed)
 
                             self.results.append(result)
                             with open(worker_file, "a") as wf:
@@ -659,7 +691,8 @@ class EmbeddingBenchmark:
             for _ in range(n_workers):
                 p = multiprocessing.Process(
                     target=_worker_process,
-                    args=(task_queue, result_queue, str(workers_dir), batch_id),
+                    args=(task_queue, result_queue, str(workers_dir), batch_id,
+                          str(batch_logger.logs_runs_dir)),
                 )
                 p.start()
                 worker_procs.append(p)
@@ -670,6 +703,7 @@ class EmbeddingBenchmark:
             while completed < n_tasks:
                 display = result_queue.get()
                 completed += 1
+                batch_logger.log_run_from_display(display)
                 if verbose:
                     algo = display['algorithm']
                     prob = display['problem_name']
@@ -708,7 +742,13 @@ class EmbeddingBenchmark:
         print("\n" + "=" * 80)
         print("Benchmark complete!")
 
+        n_success = sum(1 for r in self.results if r.success)
+        batch_logger.info(
+            f"Batch {batch_id} complete: {n_success}/{len(self.results)} succeeded"
+        )
+
         compile_batch(batch_dir)
+        batch_logger.teardown()
         self.results_manager.save_results(self.results, batch_dir, config=config)
         return batch_dir
     
