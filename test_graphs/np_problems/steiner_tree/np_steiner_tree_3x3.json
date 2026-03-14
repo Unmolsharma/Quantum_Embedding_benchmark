@@ -1,16 +1,22 @@
 {
-  "id": 203,
-  "name": "ilp_K4_3",
+  "id": 241,
+  "name": "steiner_tree_grid_3x3",
   "category": "np_problems",
-  "num_nodes": 7,
+  "num_nodes": 9,
   "num_edges": 12,
-  "density": 0.5714,
+  "density": 0.3333,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 4,
+    "type": "grid",
+    "m": 3,
     "n": 3,
-    "np_problem": "binary_integer_linear_programming",
-    "description": "4 binary variables, 3 linear constraints"
+    "np_problem": "steiner_tree",
+    "terminal_nodes": [
+      0,
+      2,
+      6,
+      8
+    ],
+    "description": "Steiner tree connecting corners of 3x3 grid"
   },
   "graph": {
     "directed": false,
@@ -37,20 +43,22 @@
       },
       {
         "id": 6
+      },
+      {
+        "id": 7
+      },
+      {
+        "id": 8
       }
     ],
     "edges": [
       {
         "source": 0,
-        "target": 4
+        "target": 3
       },
       {
         "source": 0,
-        "target": 5
-      },
-      {
-        "source": 0,
-        "target": 6
+        "target": 1
       },
       {
         "source": 1,
@@ -58,22 +66,14 @@
       },
       {
         "source": 1,
-        "target": 5
-      },
-      {
-        "source": 1,
-        "target": 6
-      },
-      {
-        "source": 2,
-        "target": 4
+        "target": 2
       },
       {
         "source": 2,
         "target": 5
       },
       {
-        "source": 2,
+        "source": 3,
         "target": 6
       },
       {
@@ -81,12 +81,24 @@
         "target": 4
       },
       {
-        "source": 3,
+        "source": 4,
+        "target": 7
+      },
+      {
+        "source": 4,
         "target": 5
       },
       {
-        "source": 3,
-        "target": 6
+        "source": 5,
+        "target": 8
+      },
+      {
+        "source": 6,
+        "target": 7
+      },
+      {
+        "source": 7,
+        "target": 8
       }
     ]
   }

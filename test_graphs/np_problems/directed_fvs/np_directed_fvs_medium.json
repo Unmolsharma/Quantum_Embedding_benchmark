@@ -1,18 +1,17 @@
 {
-  "id": 206,
-  "name": "set_packing_cycle_7",
+  "id": 244,
+  "name": "dfvs_medium",
   "category": "np_problems",
-  "num_nodes": 7,
+  "num_nodes": 6,
   "num_edges": 7,
-  "density": 0.3333,
+  "density": 0.2333,
   "metadata": {
-    "type": "cycle",
-    "n": 7,
-    "np_problem": "set_packing",
-    "description": "Maximum independent set / set packing on 7-cycle"
+    "type": "directed_custom",
+    "np_problem": "directed_feedback_vertex_set",
+    "description": "Directed graph with two overlapping cycles"
   },
   "graph": {
-    "directed": false,
+    "directed": true,
     "multigraph": false,
     "graph": {},
     "nodes": [
@@ -33,19 +32,12 @@
       },
       {
         "id": 5
-      },
-      {
-        "id": 6
       }
     ],
     "edges": [
       {
         "source": 0,
         "target": 1
-      },
-      {
-        "source": 0,
-        "target": 6
       },
       {
         "source": 1,
@@ -56,8 +48,12 @@
         "target": 3
       },
       {
-        "source": 3,
+        "source": 2,
         "target": 4
+      },
+      {
+        "source": 3,
+        "target": 1
       },
       {
         "source": 4,
@@ -65,7 +61,7 @@
       },
       {
         "source": 5,
-        "target": 6
+        "target": 2
       }
     ]
   }

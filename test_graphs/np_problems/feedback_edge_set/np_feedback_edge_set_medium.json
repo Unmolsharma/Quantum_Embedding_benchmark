@@ -1,18 +1,17 @@
 {
-  "id": 206,
-  "name": "set_packing_cycle_7",
+  "id": 250,
+  "name": "fes_medium",
   "category": "np_problems",
-  "num_nodes": 7,
-  "num_edges": 7,
-  "density": 0.3333,
+  "num_nodes": 6,
+  "num_edges": 8,
+  "density": 0.2667,
   "metadata": {
-    "type": "cycle",
-    "n": 7,
-    "np_problem": "set_packing",
-    "description": "Maximum independent set / set packing on 7-cycle"
+    "type": "directed_custom",
+    "np_problem": "feedback_edge_set",
+    "description": "Medium: two cycles sharing an edge"
   },
   "graph": {
-    "directed": false,
+    "directed": true,
     "multigraph": false,
     "graph": {},
     "nodes": [
@@ -33,9 +32,6 @@
       },
       {
         "id": 5
-      },
-      {
-        "id": 6
       }
     ],
     "edges": [
@@ -44,16 +40,20 @@
         "target": 1
       },
       {
-        "source": 0,
-        "target": 6
-      },
-      {
         "source": 1,
         "target": 2
       },
       {
-        "source": 2,
+        "source": 1,
         "target": 3
+      },
+      {
+        "source": 2,
+        "target": 0
+      },
+      {
+        "source": 2,
+        "target": 5
       },
       {
         "source": 3,
@@ -61,11 +61,11 @@
       },
       {
         "source": 4,
-        "target": 5
+        "target": 1
       },
       {
         "source": 5,
-        "target": 6
+        "target": 3
       }
     ]
   }

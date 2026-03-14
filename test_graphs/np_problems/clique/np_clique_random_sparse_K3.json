@@ -1,18 +1,17 @@
 {
-  "id": 202,
-  "name": "set_cover_K5_4",
+  "id": 214,
+  "name": "clique_random_sparse_K3",
   "category": "np_problems",
-  "num_nodes": 9,
+  "num_nodes": 12,
   "num_edges": 20,
-  "density": 0.5556,
+  "density": 0.303,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 5,
-    "n": 4,
-    "np_problem": "set_cover",
-    "universe_size": 5,
-    "num_subsets": 4,
-    "description": "Set cover: 5 elements, 4 subsets"
+    "type": "random",
+    "n": 12,
+    "m": 20,
+    "np_problem": "clique",
+    "clique_size_k": 3,
+    "description": "Find clique of size 3 in sparse random graph"
   },
   "graph": {
     "directed": false,
@@ -45,55 +44,72 @@
       },
       {
         "id": 8
+      },
+      {
+        "id": 9
+      },
+      {
+        "id": 10
+      },
+      {
+        "id": 11
       }
     ],
     "edges": [
       {
         "source": 0,
-        "target": 5
+        "target": 7
+      },
+      {
+        "source": 0,
+        "target": 9
+      },
+      {
+        "source": 0,
+        "target": 10
+      },
+      {
+        "source": 0,
+        "target": 8
+      },
+      {
+        "source": 0,
+        "target": 11
       },
       {
         "source": 0,
         "target": 6
       },
       {
-        "source": 0,
+        "source": 1,
+        "target": 4
+      },
+      {
+        "source": 1,
         "target": 7
       },
       {
-        "source": 0,
-        "target": 8
+        "source": 1,
+        "target": 3
       },
       {
         "source": 1,
         "target": 5
       },
       {
-        "source": 1,
+        "source": 2,
+        "target": 9
+      },
+      {
+        "source": 3,
+        "target": 9
+      },
+      {
+        "source": 3,
         "target": 6
       },
       {
-        "source": 1,
-        "target": 7
-      },
-      {
-        "source": 1,
-        "target": 8
-      },
-      {
-        "source": 2,
-        "target": 5
-      },
-      {
-        "source": 2,
-        "target": 6
-      },
-      {
-        "source": 2,
-        "target": 7
-      },
-      {
-        "source": 2,
+        "source": 3,
         "target": 8
       },
       {
@@ -102,31 +118,23 @@
       },
       {
         "source": 3,
-        "target": 6
-      },
-      {
-        "source": 3,
-        "target": 7
-      },
-      {
-        "source": 3,
-        "target": 8
+        "target": 10
       },
       {
         "source": 4,
-        "target": 5
-      },
-      {
-        "source": 4,
-        "target": 6
+        "target": 11
       },
       {
         "source": 4,
         "target": 7
       },
       {
-        "source": 4,
-        "target": 8
+        "source": 6,
+        "target": 10
+      },
+      {
+        "source": 7,
+        "target": 11
       }
     ]
   }

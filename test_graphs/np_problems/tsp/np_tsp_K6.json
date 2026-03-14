@@ -1,23 +1,15 @@
 {
-  "id": 200,
-  "name": "number_partitioning_N6",
+  "id": 235,
+  "name": "tsp_K6_weighted",
   "category": "np_problems",
   "num_nodes": 6,
   "num_edges": 15,
   "density": 1.0,
   "metadata": {
-    "type": "complete",
+    "type": "complete_weighted",
     "n": 6,
-    "np_problem": "number_partitioning",
-    "numbers": [
-      3,
-      1,
-      1,
-      2,
-      2,
-      1
-    ],
-    "description": "Partition 6 numbers into two equal-sum subsets"
+    "np_problem": "traveling_salesman",
+    "description": "TSP on K6 with random integer edge weights"
   },
   "graph": {
     "directed": false,
@@ -46,63 +38,78 @@
     "edges": [
       {
         "source": 0,
-        "target": 1
+        "target": 1,
+        "weight": 4
       },
       {
         "source": 0,
-        "target": 2
+        "target": 2,
+        "weight": 18
       },
       {
         "source": 0,
-        "target": 3
+        "target": 3,
+        "weight": 3
       },
       {
         "source": 0,
-        "target": 4
+        "target": 4,
+        "weight": 19
       },
       {
         "source": 0,
-        "target": 5
+        "target": 5,
+        "weight": 14
       },
       {
         "source": 1,
-        "target": 2
+        "target": 2,
+        "weight": 2
       },
       {
         "source": 1,
-        "target": 3
+        "target": 3,
+        "weight": 1
       },
       {
         "source": 1,
-        "target": 4
+        "target": 4,
+        "weight": 3
       },
       {
         "source": 1,
-        "target": 5
+        "target": 5,
+        "weight": 7
       },
       {
         "source": 2,
-        "target": 3
+        "target": 3,
+        "weight": 8
       },
       {
         "source": 2,
-        "target": 4
+        "target": 4,
+        "weight": 17
       },
       {
         "source": 2,
-        "target": 5
+        "target": 5,
+        "weight": 20
       },
       {
         "source": 3,
-        "target": 4
+        "target": 4,
+        "weight": 1
       },
       {
         "source": 3,
-        "target": 5
+        "target": 5,
+        "weight": 18
       },
       {
         "source": 4,
-        "target": 5
+        "target": 5,
+        "weight": 7
       }
     ]
   }

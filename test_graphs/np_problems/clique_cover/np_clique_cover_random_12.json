@@ -1,18 +1,16 @@
 {
-  "id": 201,
-  "name": "exact_cover_K6_6",
+  "id": 227,
+  "name": "clique_cover_random_complement",
   "category": "np_problems",
   "num_nodes": 12,
-  "num_edges": 36,
-  "density": 0.5455,
+  "num_edges": 46,
+  "density": 0.697,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 6,
-    "n": 6,
-    "np_problem": "exact_cover",
-    "universe_size": 6,
-    "num_subsets": 6,
-    "description": "Exact cover: 6 elements, 6 subsets"
+    "type": "random_complement",
+    "n": 12,
+    "np_problem": "clique_cover",
+    "num_colors": 4,
+    "description": "Clique cover on complement of sparse random graph"
   },
   "graph": {
     "directed": false,
@@ -59,6 +57,22 @@
     "edges": [
       {
         "source": 0,
+        "target": 1
+      },
+      {
+        "source": 0,
+        "target": 2
+      },
+      {
+        "source": 0,
+        "target": 3
+      },
+      {
+        "source": 0,
+        "target": 5
+      },
+      {
+        "source": 0,
         "target": 6
       },
       {
@@ -71,15 +85,23 @@
       },
       {
         "source": 0,
-        "target": 9
-      },
-      {
-        "source": 0,
         "target": 10
       },
       {
-        "source": 0,
-        "target": 11
+        "source": 1,
+        "target": 2
+      },
+      {
+        "source": 1,
+        "target": 3
+      },
+      {
+        "source": 1,
+        "target": 4
+      },
+      {
+        "source": 1,
+        "target": 5
       },
       {
         "source": 1,
@@ -95,15 +117,15 @@
       },
       {
         "source": 1,
-        "target": 9
-      },
-      {
-        "source": 1,
-        "target": 10
-      },
-      {
-        "source": 1,
         "target": 11
+      },
+      {
+        "source": 2,
+        "target": 4
+      },
+      {
+        "source": 2,
+        "target": 5
       },
       {
         "source": 2,
@@ -115,19 +137,15 @@
       },
       {
         "source": 2,
-        "target": 8
-      },
-      {
-        "source": 2,
-        "target": 9
-      },
-      {
-        "source": 2,
-        "target": 10
-      },
-      {
-        "source": 2,
         "target": 11
+      },
+      {
+        "source": 3,
+        "target": 4
+      },
+      {
+        "source": 3,
+        "target": 5
       },
       {
         "source": 3,
@@ -139,27 +157,15 @@
       },
       {
         "source": 3,
-        "target": 8
-      },
-      {
-        "source": 3,
-        "target": 9
-      },
-      {
-        "source": 3,
         "target": 10
       },
       {
-        "source": 3,
-        "target": 11
+        "source": 4,
+        "target": 5
       },
       {
         "source": 4,
         "target": 6
-      },
-      {
-        "source": 4,
-        "target": 7
       },
       {
         "source": 4,
@@ -191,14 +197,46 @@
       },
       {
         "source": 5,
-        "target": 9
-      },
-      {
-        "source": 5,
         "target": 10
       },
       {
         "source": 5,
+        "target": 11
+      },
+      {
+        "source": 6,
+        "target": 7
+      },
+      {
+        "source": 6,
+        "target": 9
+      },
+      {
+        "source": 7,
+        "target": 11
+      },
+      {
+        "source": 8,
+        "target": 9
+      },
+      {
+        "source": 8,
+        "target": 10
+      },
+      {
+        "source": 8,
+        "target": 11
+      },
+      {
+        "source": 9,
+        "target": 10
+      },
+      {
+        "source": 9,
+        "target": 11
+      },
+      {
+        "source": 10,
         "target": 11
       }
     ]

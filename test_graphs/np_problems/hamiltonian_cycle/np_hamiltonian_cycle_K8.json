@@ -1,18 +1,15 @@
 {
-  "id": 201,
-  "name": "exact_cover_K6_6",
+  "id": 233,
+  "name": "hamiltonian_cycle_K8",
   "category": "np_problems",
-  "num_nodes": 12,
-  "num_edges": 36,
-  "density": 0.5455,
+  "num_nodes": 8,
+  "num_edges": 28,
+  "density": 1.0,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 6,
-    "n": 6,
-    "np_problem": "exact_cover",
-    "universe_size": 6,
-    "num_subsets": 6,
-    "description": "Exact cover: 6 elements, 6 subsets"
+    "type": "complete",
+    "n": 8,
+    "np_problem": "hamiltonian_cycle",
+    "description": "Hamiltonian cycle on K8"
   },
   "graph": {
     "directed": false,
@@ -42,23 +39,31 @@
       },
       {
         "id": 7
-      },
-      {
-        "id": 8
-      },
-      {
-        "id": 9
-      },
-      {
-        "id": 10
-      },
-      {
-        "id": 11
       }
     ],
     "edges": [
       {
         "source": 0,
+        "target": 1
+      },
+      {
+        "source": 0,
+        "target": 2
+      },
+      {
+        "source": 0,
+        "target": 3
+      },
+      {
+        "source": 0,
+        "target": 4
+      },
+      {
+        "source": 0,
+        "target": 5
+      },
+      {
+        "source": 0,
         "target": 6
       },
       {
@@ -66,20 +71,20 @@
         "target": 7
       },
       {
-        "source": 0,
-        "target": 8
+        "source": 1,
+        "target": 2
       },
       {
-        "source": 0,
-        "target": 9
+        "source": 1,
+        "target": 3
       },
       {
-        "source": 0,
-        "target": 10
+        "source": 1,
+        "target": 4
       },
       {
-        "source": 0,
-        "target": 11
+        "source": 1,
+        "target": 5
       },
       {
         "source": 1,
@@ -90,20 +95,16 @@
         "target": 7
       },
       {
-        "source": 1,
-        "target": 8
+        "source": 2,
+        "target": 3
       },
       {
-        "source": 1,
-        "target": 9
+        "source": 2,
+        "target": 4
       },
       {
-        "source": 1,
-        "target": 10
-      },
-      {
-        "source": 1,
-        "target": 11
+        "source": 2,
+        "target": 5
       },
       {
         "source": 2,
@@ -114,20 +115,12 @@
         "target": 7
       },
       {
-        "source": 2,
-        "target": 8
+        "source": 3,
+        "target": 4
       },
       {
-        "source": 2,
-        "target": 9
-      },
-      {
-        "source": 2,
-        "target": 10
-      },
-      {
-        "source": 2,
-        "target": 11
+        "source": 3,
+        "target": 5
       },
       {
         "source": 3,
@@ -138,20 +131,8 @@
         "target": 7
       },
       {
-        "source": 3,
-        "target": 8
-      },
-      {
-        "source": 3,
-        "target": 9
-      },
-      {
-        "source": 3,
-        "target": 10
-      },
-      {
-        "source": 3,
-        "target": 11
+        "source": 4,
+        "target": 5
       },
       {
         "source": 4,
@@ -162,22 +143,6 @@
         "target": 7
       },
       {
-        "source": 4,
-        "target": 8
-      },
-      {
-        "source": 4,
-        "target": 9
-      },
-      {
-        "source": 4,
-        "target": 10
-      },
-      {
-        "source": 4,
-        "target": 11
-      },
-      {
         "source": 5,
         "target": 6
       },
@@ -186,20 +151,8 @@
         "target": 7
       },
       {
-        "source": 5,
-        "target": 8
-      },
-      {
-        "source": 5,
-        "target": 9
-      },
-      {
-        "source": 5,
-        "target": 10
-      },
-      {
-        "source": 5,
-        "target": 11
+        "source": 6,
+        "target": 7
       }
     ]
   }

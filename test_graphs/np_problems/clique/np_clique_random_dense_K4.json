@@ -1,18 +1,17 @@
 {
-  "id": 201,
-  "name": "exact_cover_K6_6",
+  "id": 215,
+  "name": "clique_random_dense_K4",
   "category": "np_problems",
   "num_nodes": 12,
-  "num_edges": 36,
-  "density": 0.5455,
+  "num_edges": 40,
+  "density": 0.6061,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 6,
-    "n": 6,
-    "np_problem": "exact_cover",
-    "universe_size": 6,
-    "num_subsets": 6,
-    "description": "Exact cover: 6 elements, 6 subsets"
+    "type": "random",
+    "n": 12,
+    "m": 40,
+    "np_problem": "clique",
+    "clique_size_k": 4,
+    "description": "Find clique of size 4 in dense random graph"
   },
   "graph": {
     "directed": false,
@@ -59,39 +58,23 @@
     "edges": [
       {
         "source": 0,
-        "target": 6
-      },
-      {
-        "source": 0,
-        "target": 7
-      },
-      {
-        "source": 0,
-        "target": 8
+        "target": 1
       },
       {
         "source": 0,
         "target": 9
+      },
+      {
+        "source": 0,
+        "target": 3
       },
       {
         "source": 0,
         "target": 10
       },
       {
-        "source": 0,
-        "target": 11
-      },
-      {
         "source": 1,
-        "target": 6
-      },
-      {
-        "source": 1,
-        "target": 7
-      },
-      {
-        "source": 1,
-        "target": 8
+        "target": 5
       },
       {
         "source": 1,
@@ -99,27 +82,15 @@
       },
       {
         "source": 1,
-        "target": 10
-      },
-      {
-        "source": 1,
         "target": 11
       },
       {
-        "source": 2,
-        "target": 6
-      },
-      {
-        "source": 2,
-        "target": 7
-      },
-      {
-        "source": 2,
+        "source": 1,
         "target": 8
       },
       {
         "source": 2,
-        "target": 9
+        "target": 11
       },
       {
         "source": 2,
@@ -127,23 +98,39 @@
       },
       {
         "source": 2,
-        "target": 11
+        "target": 8
       },
       {
-        "source": 3,
-        "target": 6
+        "source": 2,
+        "target": 3
       },
       {
-        "source": 3,
+        "source": 2,
+        "target": 5
+      },
+      {
+        "source": 2,
         "target": 7
       },
       {
-        "source": 3,
-        "target": 8
+        "source": 2,
+        "target": 6
+      },
+      {
+        "source": 2,
+        "target": 9
+      },
+      {
+        "source": 2,
+        "target": 4
       },
       {
         "source": 3,
         "target": 9
+      },
+      {
+        "source": 3,
+        "target": 8
       },
       {
         "source": 3,
@@ -155,15 +142,7 @@
       },
       {
         "source": 4,
-        "target": 6
-      },
-      {
-        "source": 4,
-        "target": 7
-      },
-      {
-        "source": 4,
-        "target": 8
+        "target": 10
       },
       {
         "source": 4,
@@ -171,34 +150,70 @@
       },
       {
         "source": 4,
-        "target": 10
+        "target": 8
       },
       {
         "source": 4,
+        "target": 7
+      },
+      {
+        "source": 4,
+        "target": 6
+      },
+      {
+        "source": 5,
+        "target": 8
+      },
+      {
+        "source": 5,
+        "target": 7
+      },
+      {
+        "source": 5,
+        "target": 6
+      },
+      {
+        "source": 5,
+        "target": 9
+      },
+      {
+        "source": 5,
         "target": 11
       },
       {
         "source": 5,
-        "target": 6
-      },
-      {
-        "source": 5,
-        "target": 7
-      },
-      {
-        "source": 5,
-        "target": 8
-      },
-      {
-        "source": 5,
-        "target": 9
-      },
-      {
-        "source": 5,
         "target": 10
       },
       {
-        "source": 5,
+        "source": 6,
+        "target": 10
+      },
+      {
+        "source": 6,
+        "target": 11
+      },
+      {
+        "source": 6,
+        "target": 8
+      },
+      {
+        "source": 7,
+        "target": 8
+      },
+      {
+        "source": 7,
+        "target": 10
+      },
+      {
+        "source": 8,
+        "target": 10
+      },
+      {
+        "source": 8,
+        "target": 11
+      },
+      {
+        "source": 9,
         "target": 11
       }
     ]

@@ -1,16 +1,24 @@
 {
-  "id": 203,
-  "name": "ilp_K4_3",
+  "id": 228,
+  "name": "job_sequencing_K4_2",
   "category": "np_problems",
-  "num_nodes": 7,
-  "num_edges": 12,
-  "density": 0.5714,
+  "num_nodes": 6,
+  "num_edges": 8,
+  "density": 0.5333,
   "metadata": {
     "type": "complete_bipartite",
     "m": 4,
-    "n": 3,
-    "np_problem": "binary_integer_linear_programming",
-    "description": "4 binary variables, 3 linear constraints"
+    "n": 2,
+    "np_problem": "job_sequencing",
+    "num_jobs": 4,
+    "num_machines": 2,
+    "job_lengths": [
+      2,
+      3,
+      1,
+      4
+    ],
+    "description": "4 jobs on 2 machines"
   },
   "graph": {
     "directed": false,
@@ -34,9 +42,6 @@
       },
       {
         "id": 5
-      },
-      {
-        "id": 6
       }
     ],
     "edges": [
@@ -49,20 +54,12 @@
         "target": 5
       },
       {
-        "source": 0,
-        "target": 6
-      },
-      {
         "source": 1,
         "target": 4
       },
       {
         "source": 1,
         "target": 5
-      },
-      {
-        "source": 1,
-        "target": 6
       },
       {
         "source": 2,
@@ -73,20 +70,12 @@
         "target": 5
       },
       {
-        "source": 2,
-        "target": 6
-      },
-      {
         "source": 3,
         "target": 4
       },
       {
         "source": 3,
         "target": 5
-      },
-      {
-        "source": 3,
-        "target": 6
       }
     ]
   }

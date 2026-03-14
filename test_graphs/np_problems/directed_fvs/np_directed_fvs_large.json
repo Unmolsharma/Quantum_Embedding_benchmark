@@ -1,18 +1,17 @@
 {
-  "id": 206,
-  "name": "set_packing_cycle_7",
+  "id": 245,
+  "name": "dfvs_large",
   "category": "np_problems",
-  "num_nodes": 7,
-  "num_edges": 7,
-  "density": 0.3333,
+  "num_nodes": 8,
+  "num_edges": 10,
+  "density": 0.1786,
   "metadata": {
-    "type": "cycle",
-    "n": 7,
-    "np_problem": "set_packing",
-    "description": "Maximum independent set / set packing on 7-cycle"
+    "type": "directed_custom",
+    "np_problem": "directed_feedback_vertex_set",
+    "description": "Directed graph with three distinct cycles"
   },
   "graph": {
-    "directed": false,
+    "directed": true,
     "multigraph": false,
     "graph": {},
     "nodes": [
@@ -36,6 +35,9 @@
       },
       {
         "id": 6
+      },
+      {
+        "id": 7
       }
     ],
     "edges": [
@@ -44,12 +46,12 @@
         "target": 1
       },
       {
-        "source": 0,
-        "target": 6
+        "source": 1,
+        "target": 2
       },
       {
         "source": 1,
-        "target": 2
+        "target": 4
       },
       {
         "source": 2,
@@ -57,7 +59,11 @@
       },
       {
         "source": 3,
-        "target": 4
+        "target": 0
+      },
+      {
+        "source": 3,
+        "target": 6
       },
       {
         "source": 4,
@@ -65,7 +71,15 @@
       },
       {
         "source": 5,
-        "target": 6
+        "target": 1
+      },
+      {
+        "source": 6,
+        "target": 7
+      },
+      {
+        "source": 7,
+        "target": 3
       }
     ]
   }

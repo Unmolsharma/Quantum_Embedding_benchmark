@@ -1,16 +1,14 @@
 {
-  "id": 203,
-  "name": "ilp_K4_3",
+  "id": 247,
+  "name": "undirected_fvs_petersen",
   "category": "np_problems",
-  "num_nodes": 7,
-  "num_edges": 12,
-  "density": 0.5714,
+  "num_nodes": 10,
+  "num_edges": 15,
+  "density": 0.3333,
   "metadata": {
-    "type": "complete_bipartite",
-    "m": 4,
-    "n": 3,
-    "np_problem": "binary_integer_linear_programming",
-    "description": "4 binary variables, 3 linear constraints"
+    "type": "petersen",
+    "np_problem": "undirected_feedback_vertex_set",
+    "description": "Minimum FVS on Petersen graph"
   },
   "graph": {
     "directed": false,
@@ -37,11 +35,24 @@
       },
       {
         "id": 6
+      },
+      {
+        "id": 7
+      },
+      {
+        "id": 8
+      },
+      {
+        "id": 9
       }
     ],
     "edges": [
       {
         "source": 0,
+        "target": 1
+      },
+      {
+        "source": 0,
         "target": 4
       },
       {
@@ -49,16 +60,8 @@
         "target": 5
       },
       {
-        "source": 0,
-        "target": 6
-      },
-      {
         "source": 1,
-        "target": 4
-      },
-      {
-        "source": 1,
-        "target": 5
+        "target": 2
       },
       {
         "source": 1,
@@ -66,15 +69,11 @@
       },
       {
         "source": 2,
-        "target": 4
+        "target": 3
       },
       {
         "source": 2,
-        "target": 5
-      },
-      {
-        "source": 2,
-        "target": 6
+        "target": 7
       },
       {
         "source": 3,
@@ -82,11 +81,31 @@
       },
       {
         "source": 3,
-        "target": 5
+        "target": 8
       },
       {
-        "source": 3,
-        "target": 6
+        "source": 4,
+        "target": 9
+      },
+      {
+        "source": 5,
+        "target": 7
+      },
+      {
+        "source": 5,
+        "target": 8
+      },
+      {
+        "source": 6,
+        "target": 8
+      },
+      {
+        "source": 6,
+        "target": 9
+      },
+      {
+        "source": 7,
+        "target": 9
       }
     ]
   }
