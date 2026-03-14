@@ -3,7 +3,10 @@ qeanalysis/loader.py
 ====================
 Load a qebench batch directory into a DataFrame ready for analysis.
 
-Adds derived columns not present in runs.csv:
+Primary source: results.db (SQLite) — the authoritative store written by compile_batch().
+Fallback:       runs.csv — for batches produced before the SQLite pipeline.
+
+Adds derived columns not stored in the database:
   category              — graph family inferred from problem_name prefix
   qubit_overhead_ratio  — total_qubits_used / problem_nodes
   coupler_overhead_ratio — total_couplers_used / problem_edges
@@ -12,11 +15,11 @@ Adds derived columns not present in runs.csv:
 """
 
 import json
-import math
+import sqlite3
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 
 # ── Schema ─────────────────────────────────────────────────────────────────────
@@ -108,9 +111,44 @@ def _validate_columns(df: pd.DataFrame) -> None:
     missing = _REQUIRED_COLUMNS - set(df.columns)
     if missing:
         raise ValueError(
-            f"runs.csv is missing required columns: {sorted(missing)}\n"
+            f"Batch is missing required columns: {sorted(missing)}\n"
             f"Available columns: {sorted(df.columns.tolist())}"
         )
+
+
+# ── SQLite loader ───────────────────────────────────────────────────────────────
+
+def _load_from_db(db_path: Path, batch_id: str) -> pd.DataFrame:
+    """Read all runs for batch_id from results.db into a DataFrame."""
+    con = sqlite3.connect(db_path)
+    df = pd.read_sql_query(
+        "SELECT * FROM runs WHERE batch_id = ? ORDER BY topology_name, algorithm, problem_name, trial",
+        con,
+        params=(batch_id,),
+    )
+    con.close()
+
+    # SQLite stores booleans as INTEGER; coerce to Python bool
+    for col in ('success', 'is_valid', 'partial'):
+        if col in df.columns:
+            df[col] = df[col].astype(bool)
+
+    return df
+
+
+def _load_config_from_db(db_path: Path, batch_id: str) -> Dict:
+    """Read config_json from the batches table; return empty dict on failure."""
+    try:
+        con = sqlite3.connect(db_path)
+        row = con.execute(
+            "SELECT config_json FROM batches WHERE batch_id = ?", (batch_id,)
+        ).fetchone()
+        con.close()
+        if row and row[0]:
+            return json.loads(row[0])
+    except Exception:
+        pass
+    return {}
 
 
 # ── Public API ──────────────────────────────────────────────────────────────────
@@ -118,47 +156,61 @@ def _validate_columns(df: pd.DataFrame) -> None:
 def load_batch(batch_dir) -> Tuple[pd.DataFrame, Dict]:
     """Load a qebench batch directory into a DataFrame + config dict.
 
+    Reads from results.db (SQLite) if present; falls back to runs.csv for
+    batches produced before the SQLite pipeline was introduced.
+
     Args:
         batch_dir: Path (str or Path) to a batch directory produced by
-                   qebench.ResultsManager.  Must contain runs.csv and
-                   optionally config.json.
+                   qebench.EmbeddingBenchmark.run_full_benchmark().
 
     Returns:
-        (df, config) where df has all runs.csv columns plus the derived
-        columns (category, qubit_overhead_ratio, ...) and config is the
-        parsed config.json dict (empty dict if file absent).
+        (df, config) where df has all runs columns plus the derived columns
+        (category, qubit_overhead_ratio, ...) and config is the parsed
+        config.json dict (empty dict if file absent).
 
     Raises:
-        FileNotFoundError: if batch_dir or runs.csv does not exist.
-        ValueError: if required columns are missing from runs.csv.
+        FileNotFoundError: if batch_dir does not exist, or neither
+                           results.db nor runs.csv is found.
+        ValueError: if required columns are missing.
     """
     batch_dir = Path(batch_dir)
     if not batch_dir.exists():
         raise FileNotFoundError(f"Batch directory not found: {batch_dir}")
 
+    batch_id = batch_dir.name
+
+    # ── Load runs ──────────────────────────────────────────────────────────────
+    db_path = batch_dir / 'results.db'
     runs_csv = batch_dir / 'runs.csv'
-    if not runs_csv.exists():
-        raise FileNotFoundError(f"runs.csv not found in {batch_dir}")
 
-    # Load config (optional)
-    config: Dict = {}
-    config_json = batch_dir / 'config.json'
-    if config_json.exists():
-        with open(config_json, 'r') as f:
-            config = json.load(f)
+    if db_path.exists():
+        df = _load_from_db(db_path, batch_id)
+        # Config: prefer config.json (richer), fall back to batches table
+        config_json = batch_dir / 'config.json'
+        if config_json.exists():
+            with open(config_json) as f:
+                config = json.load(f)
+        else:
+            config = _load_config_from_db(db_path, batch_id)
+    elif runs_csv.exists():
+        df = pd.read_csv(runs_csv)
+        for col in ('success', 'is_valid'):
+            if col in df.columns:
+                df[col] = df[col].astype(bool)
+        config_json = batch_dir / 'config.json'
+        config: Dict = {}
+        if config_json.exists():
+            with open(config_json) as f:
+                config = json.load(f)
+    else:
+        raise FileNotFoundError(
+            f"No results.db or runs.csv found in {batch_dir}"
+        )
 
-    # Load raw runs
-    df = pd.read_csv(runs_csv)
-
-    # Coerce boolean columns (CSV may store as strings)
-    for col in ('success', 'is_valid'):
-        if col in df.columns:
-            df[col] = df[col].astype(bool)
-
-    # Validate schema
+    # ── Validate schema ────────────────────────────────────────────────────────
     _validate_columns(df)
 
-    # Derive computed columns
+    # ── Derive computed columns ────────────────────────────────────────────────
     timeout = float(config.get('timeout', 60.0))
     df = _derive_columns(df, timeout=timeout)
 

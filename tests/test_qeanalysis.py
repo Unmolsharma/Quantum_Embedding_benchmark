@@ -66,22 +66,22 @@ def _make_row(algo, prob_name, n, edges, density, trial, rng, success=True):
             'algorithm': algo, 'problem_name': prob_name,
             'topology_name': _TOPO, 'trial': trial,
             'success': True, 'is_valid': True,
-            'embedding_time': t,
+            'wall_time': t,
             'avg_chain_length': avg_cl, 'max_chain_length': max_cl,
             'total_qubits_used': qubits, 'total_couplers_used': int(couplers),
             'problem_nodes': n, 'problem_edges': edges,
-            'problem_density': density, 'error_message': None,
+            'problem_density': density, 'error': None,
         }
     else:
         return {
             'algorithm': algo, 'problem_name': prob_name,
             'topology_name': _TOPO, 'trial': trial,
             'success': False, 'is_valid': False,
-            'embedding_time': _TIMEOUT,
+            'wall_time': _TIMEOUT,
             'avg_chain_length': 0.0, 'max_chain_length': 0,
             'total_qubits_used': 0, 'total_couplers_used': 0,
             'problem_nodes': n, 'problem_edges': edges,
-            'problem_density': density, 'error_message': 'timeout',
+            'problem_density': density, 'error': 'timeout',
         }
 
 
@@ -110,24 +110,50 @@ def sample_df_with_failure(sample_df) -> pd.DataFrame:
     mask = (df['algorithm'] == 'atom') & (df['problem_name'] == 'K5') & (df['trial'] == 2)
     df.loc[mask, 'success']         = False
     df.loc[mask, 'is_valid']        = False
-    df.loc[mask, 'embedding_time']  = _TIMEOUT
-    df.loc[mask, 'avg_chain_length']= 0.0
-    df.loc[mask, 'error_message']   = 'timeout'
+    df.loc[mask, 'wall_time']        = _TIMEOUT
+    df.loc[mask, 'avg_chain_length'] = 0.0
+    df.loc[mask, 'error']            = 'timeout'
     return df
 
 
 @pytest.fixture()
 def batch_dir(tmp_path, sample_df) -> Path:
-    """Write synthetic data to a temp batch directory for integration tests."""
+    """Write synthetic data to a temp batch directory for integration tests.
+
+    Writes results.db (primary source) so load_batch() exercises the SQLite
+    path.  config.json is written alongside for timeout/metadata.
+    """
+    import sqlite3 as _sqlite3
+
     bd = tmp_path / 'batch_test'
     bd.mkdir()
+    batch_id = 'batch_test'
 
-    # Write runs.csv (drop derived columns that load_batch re-adds)
+    # Drop derived columns; SQLite stores the raw run data only
     raw_cols = [c for c in sample_df.columns
                 if c not in ('category', 'qubit_overhead_ratio',
                              'coupler_overhead_ratio', 'max_to_avg_chain_ratio',
                              'is_timeout')]
-    sample_df[raw_cols].to_csv(bd / 'runs.csv', index=False)
+    raw_df = sample_df[raw_cols].copy()
+    raw_df['batch_id'] = batch_id
+    # Coerce booleans to int for SQLite
+    for col in ('success', 'is_valid'):
+        if col in raw_df.columns:
+            raw_df[col] = raw_df[col].astype(int)
+
+    db_path = bd / 'results.db'
+    con = _sqlite3.connect(db_path)
+    raw_df.to_sql('runs', con, if_exists='replace', index=False)
+    # Minimal batches table so _load_config_from_db has something to query
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS batches (batch_id TEXT PRIMARY KEY, config_json TEXT)"
+    )
+    con.execute(
+        "INSERT OR IGNORE INTO batches (batch_id, config_json) VALUES (?, ?)",
+        (batch_id, json.dumps({})),
+    )
+    con.commit()
+    con.close()
 
     # Write config.json
     config = {
@@ -226,6 +252,14 @@ class TestLoader:
         df, config = load_batch(batch_dir)
         assert isinstance(df, pd.DataFrame)
         assert isinstance(config, dict)
+
+    def test_load_batch_reads_sqlite(self, batch_dir):
+        """load_batch() should read from results.db when it exists."""
+        from qeanalysis.loader import load_batch
+        assert (batch_dir / 'results.db').exists(), "fixture must write results.db"
+        df, config = load_batch(batch_dir)
+        assert len(df) == len(_ALGOS) * len(_PROBLEMS) * _N_TRIALS
+        assert df['success'].dtype == bool
 
     def test_load_batch_derived_columns(self, batch_dir):
         from qeanalysis.loader import load_batch
@@ -449,12 +483,12 @@ class TestPlots:
 
     def test_plot_scaling(self, sample_df):
         from qeanalysis.plots import plot_scaling
-        fig = plot_scaling(sample_df, 'embedding_time', 'problem_nodes', save=False)
+        fig = plot_scaling(sample_df, 'wall_time', 'problem_nodes', save=False)
         assert isinstance(fig, plt.Figure)
 
     def test_plot_scaling_log(self, sample_df):
         from qeanalysis.plots import plot_scaling
-        fig = plot_scaling(sample_df, 'embedding_time', 'problem_nodes', log=True, save=False)
+        fig = plot_scaling(sample_df, 'wall_time', 'problem_nodes', log=True, save=False)
         assert isinstance(fig, plt.Figure)
 
     def test_plot_density_hardness(self, sample_df):
