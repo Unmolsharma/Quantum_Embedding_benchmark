@@ -709,7 +709,8 @@ def _category_of(problem_name: str) -> str:
     return infer_category(problem_name)
 
 
-def _draw_chain_dots_categorical(ax, df, graphs, algos, palette, markers):
+def _draw_chain_dots_categorical(ax, df, graphs, algos, palette, markers,
+                                  metric='avg_chain_length'):
     """Draw dot plot on ax with categorical x positions for the given graphs."""
     x_pos = {g: i for i, g in enumerate(graphs)}
     categories = [_category_of(g) for g in graphs]
@@ -722,10 +723,13 @@ def _draw_chain_dots_categorical(ax, df, graphs, algos, palette, markers):
             gdf = adf[adf['problem_name'] == g]
             if gdf.empty:
                 continue
-            xs_trial.extend([x_pos[g]] * len(gdf))
-            ys_trial.extend(gdf['avg_chain_length'].tolist())
+            vals = gdf[metric].dropna()
+            if vals.empty:
+                continue
+            xs_trial.extend([x_pos[g]] * len(vals))
+            ys_trial.extend(vals.tolist())
             xs_mean.append(x_pos[g])
-            ys_mean.append(gdf['avg_chain_length'].mean())
+            ys_mean.append(vals.mean())
         ax.scatter(xs_trial, ys_trial,
                    color=palette[algo], marker=markers[algo],
                    alpha=0.35, s=20, zorder=2)
@@ -781,19 +785,28 @@ def _add_category_labels(ax, graphs, categories):
 # ── 15. Graph-indexed chain length ───────────────────────────────────────────────
 
 def plot_graph_indexed_chain(df, x_mode='by_graph_id', algo_palette=None,
+                              metric='avg_chain_length',
                               output_dir=None, save=False):
-    """Dot plot: avg_chain_length per graph instance.
+    """Dot plot: chain length metric per graph instance.
 
-    x_mode: 'by_graph_id' (categorical) | 'by_n_nodes' (numeric) | 'by_density' (numeric)
+    x_mode:  'by_graph_id' (categorical) | 'by_n_nodes' (numeric) | 'by_density' (numeric)
+    metric:  column to plot; defaults to 'avg_chain_length'. Pass 'max_chain_length' for
+             the max-chain variant.
     Shows per-trial dots (small, semi-transparent) + per-algorithm mean marker (diamond).
-    Shared-graph filter: only graphs where ALL algorithms have at least one success.
+    Each algorithm only appears where it succeeded — absence is itself the signal.
     """
-    from qeanalysis.filters import shared_graph_filter
     success_df = df[df['success']].copy()
+    # Drop rows where the requested metric is NaN (pre-SQLite batches may have nulls)
+    if metric in success_df.columns:
+        success_df = success_df.dropna(subset=[metric])
+
+    fname = 'chain_length.png' if metric == 'avg_chain_length' else f'{metric}.png'
+    ylabel = 'Avg chain length' if metric == 'avg_chain_length' else metric.replace('_', ' ').title()
+
     if success_df.empty:
         fig, ax = plt.subplots()
         ax.text(0.5, 0.5, 'No successful trials', ha='center', va='center')
-        _maybe_save(fig, output_dir, 'chain_length.png', save,
+        _maybe_save(fig, output_dir, fname, save,
                     subdir=f'figures/graph_indexed/{x_mode}')
         return fig
 
@@ -801,11 +814,7 @@ def plot_graph_indexed_chain(df, x_mode='by_graph_id', algo_palette=None,
     palette = algo_palette or _algo_palette(algos)
     markers = _algo_markers(algos)
 
-    # Shared-graph filter: intersection of graphs where each algorithm succeeded
-    filt_df = shared_graph_filter(success_df, algos)
-    if filt_df.empty:
-        filt_df = success_df  # fall back if no common graphs
-
+    filt_df = success_df
     graphs = sorted(filt_df['problem_name'].unique())
     n_graphs = len(graphs)
     n_algos = len(algos)
@@ -825,20 +834,22 @@ def plot_graph_indexed_chain(df, x_mode='by_graph_id', algo_palette=None,
                 axes = [axes]
             for ax, cat in zip(axes, unique_cats):
                 cat_graphs = [g for g in graphs if _category_of(g) == cat]
-                _draw_chain_dots_categorical(ax, filt_df, cat_graphs, algos, palette, markers)
+                _draw_chain_dots_categorical(ax, filt_df, cat_graphs, algos, palette, markers,
+                                             metric=metric)
                 ax.set_title(cat, fontsize=10)
                 ax.set_xlabel('')
-            axes[0].set_ylabel('Avg chain length')
+            axes[0].set_ylabel(ylabel)
             handles = [mpatches.Patch(color=palette[a], label=a) for a in algos]
             fig.legend(handles=handles, bbox_to_anchor=(1.01, 0.9), loc='upper left',
                        framealpha=0.9, fontsize=8)
-            fig.suptitle('Chain length by graph (all algorithms, shared-graph filter)')
+            fig.suptitle(f'{ylabel} by graph (successful trials only)')
         else:
             width = max(14, n_graphs * 0.55)
             fig, ax = plt.subplots(figsize=(width, 5))
-            _draw_chain_dots_categorical(ax, filt_df, graphs, algos, palette, markers)
-            ax.set_ylabel('Avg chain length')
-            ax.set_title('Chain length by graph (shared-graph filter)')
+            _draw_chain_dots_categorical(ax, filt_df, graphs, algos, palette, markers,
+                                         metric=metric)
+            ax.set_ylabel(ylabel)
+            ax.set_title(f'{ylabel} by graph (successful trials only)')
             handles = [mpatches.Patch(color=palette[a], label=a) for a in algos]
             ax.legend(handles=handles, bbox_to_anchor=(1.01, 1), loc='upper left',
                       framealpha=0.9, fontsize=8)
@@ -855,26 +866,26 @@ def plot_graph_indexed_chain(df, x_mode='by_graph_id', algo_palette=None,
             # Per-trial dots
             x_trial = [row[x_col] + _graph_jitter(row['problem_name'], jitter_mag)
                        for _, row in adf.iterrows()]
-            ax.scatter(x_trial, adf['avg_chain_length'],
+            ax.scatter(x_trial, adf[metric],
                        color=palette[algo], marker=markers[algo],
                        alpha=0.35, s=25, zorder=2)
             # Per-graph mean
             means = adf.groupby('problem_name').agg(
-                {x_col: 'first', 'avg_chain_length': 'mean'}
+                {x_col: 'first', metric: 'mean'}
             )
             x_mean = [xv + _graph_jitter(gid, jitter_mag)
                       for gid, xv in zip(means.index, means[x_col])]
-            ax.scatter(x_mean, means['avg_chain_length'],
+            ax.scatter(x_mean, means[metric],
                        color=palette[algo], marker='D', s=70,
                        label=algo, zorder=3, edgecolors='black', linewidths=0.5)
         ax.set_xlabel(xlabel)
-        ax.set_ylabel('Avg chain length')
-        ax.set_title(f'Chain length vs {xlabel.lower()} (shared-graph filter)')
+        ax.set_ylabel(ylabel)
+        ax.set_title(f'{ylabel} vs {xlabel.lower()} (successful trials only)')
         ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', framealpha=0.9, fontsize=9)
         ax.grid(alpha=0.3)
 
     plt.tight_layout()
-    _maybe_save(fig, output_dir, 'chain_length.png', save,
+    _maybe_save(fig, output_dir, fname, save,
                 subdir=f'figures/graph_indexed/{x_mode}')
     return fig
 
@@ -1004,4 +1015,214 @@ def plot_graph_indexed_success(df, x_mode='by_graph_id', output_dir=None, save=F
     plt.tight_layout()
     _maybe_save(fig, output_dir, 'success.png', save,
                 subdir=f'figures/graph_indexed/{x_mode}')
+    return fig
+
+
+# ── 18. Max chain length distribution (KDE) ──────────────────────────────────
+
+def plot_max_chain_distribution(df: pd.DataFrame,
+                                 algo_palette=None,
+                                 output_dir=None,
+                                 save: bool = False) -> plt.Figure:
+    """Overlaid KDE of max_chain_length per algorithm (successful trials only).
+
+    Batches that predate the max_chain_length column will have NaN values;
+    those rows are silently dropped so the plot degrades gracefully.
+    """
+    success_df = df[df['success']].copy()
+    if 'max_chain_length' in success_df.columns:
+        success_df = success_df.dropna(subset=['max_chain_length'])
+
+    if success_df.empty or 'max_chain_length' not in success_df.columns:
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, 'No max_chain_length data', ha='center', va='center')
+        _maybe_save(fig, output_dir, 'max_chain_length_kde.png', save,
+                    subdir='figures/distributions')
+        return fig
+
+    palette = algo_palette or _algo_palette(success_df['algorithm'].unique())
+    algos = sorted(success_df['algorithm'].unique())
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for algo in algos:
+        data = success_df[success_df['algorithm'] == algo]['max_chain_length'].dropna()
+        if data.empty:
+            continue
+        if data.std() == 0:
+            ax.axvline(data.mean(), label=algo, color=palette[algo], linestyle='--')
+        else:
+            sns.kdeplot(data, ax=ax, label=algo, color=palette[algo], fill=True, alpha=0.2)
+
+    ax.set_xlabel('Max chain length')
+    ax.set_ylabel('Density')
+    ax.set_title('Max chain length distribution per algorithm')
+    ax.legend(framealpha=0.9)
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+    _maybe_save(fig, output_dir, 'max_chain_length_kde.png', save,
+                subdir='figures/distributions')
+    return fig
+
+
+# ── 19. Shared-graph intersection comparison ─────────────────────────────────
+
+def plot_intersection_comparison(df: pd.DataFrame,
+                                  algo_a: str,
+                                  algo_b: str,
+                                  algo_palette=None,
+                                  output_dir=None,
+                                  save: bool = False) -> plt.Figure:
+    """Grouped bar chart comparing two algorithms on their shared-success graphs.
+
+    For each of five metrics the figure shows:
+      - Solid bars: means computed only on graphs where BOTH algorithms succeeded
+        (intersection set).
+      - Ghost bars (lighter, behind): unfiltered means across all successful runs.
+
+    Both sets are normalised to the better algorithm's intersection value so bars
+    represent relative performance: 1.0 = equal, > 1.0 = worse.  Raw values are
+    annotated on the solid bars so readers can recover the actual numbers.
+
+    An annotation at the bottom shows:
+      - Intersection size N (graphs where both succeeded)
+      - Per-algorithm success counts out of total problems
+    """
+    METRICS = [
+        ('avg_chain_length',    'Avg chain\nlength'),
+        ('max_chain_length',    'Max chain\nlength'),
+        ('wall_time',           'Wall\ntime (s)'),
+        ('total_qubits_used',   'Total\nqubits'),
+        ('qubit_overhead_ratio','Qubit\noverhead'),
+    ]
+
+    success_df = df[df['success']].copy()
+
+    # Graphs where each algorithm succeeded
+    a_graphs = set(success_df[success_df['algorithm'] == algo_a]['problem_name'].unique())
+    b_graphs = set(success_df[success_df['algorithm'] == algo_b]['problem_name'].unique())
+    shared_graphs = a_graphs & b_graphs
+    N = len(shared_graphs)
+
+    n_problems = df['problem_name'].nunique()
+
+    palette = algo_palette or _algo_palette([algo_a, algo_b])
+    color_a = palette.get(algo_a, _CB_PALETTE[0])
+    color_b = palette.get(algo_b, _CB_PALETTE[1])
+
+    intersection_df = success_df[success_df['problem_name'].isin(shared_graphs)]
+
+    # Collect per-metric data (only metrics with data in both algos)
+    metrics_data = []
+    for col, label in METRICS:
+        if col not in success_df.columns:
+            continue
+        int_a = (intersection_df[intersection_df['algorithm'] == algo_a][col]
+                 .dropna().mean() if N > 0 else float('nan'))
+        int_b = (intersection_df[intersection_df['algorithm'] == algo_b][col]
+                 .dropna().mean() if N > 0 else float('nan'))
+        raw_a = success_df[success_df['algorithm'] == algo_a][col].dropna().mean()
+        raw_b = success_df[success_df['algorithm'] == algo_b][col].dropna().mean()
+
+        # Skip metric if no intersection data for either algo
+        if np.isnan(int_a) and np.isnan(int_b):
+            continue
+
+        # Normalise to intersection-best (lower is better for all 5 metrics)
+        valid = [v for v in (int_a, int_b) if not np.isnan(v)]
+        ref = min(valid) if valid else 1.0
+        if ref == 0:
+            ref = 1.0
+
+        metrics_data.append({
+            'label': label,
+            'a_int': int_a,  'b_int': int_b,
+            'a_int_norm': int_a / ref if not np.isnan(int_a) else float('nan'),
+            'b_int_norm': int_b / ref if not np.isnan(int_b) else float('nan'),
+            'a_raw_norm': raw_a / ref if not np.isnan(raw_a) else float('nan'),
+            'b_raw_norm': raw_b / ref if not np.isnan(raw_b) else float('nan'),
+        })
+
+    n_metrics = len(metrics_data)
+
+    if n_metrics == 0:
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, f'No shared data for {algo_a} vs {algo_b}',
+                ha='center', va='center')
+        fname = f'intersection_{algo_a}_vs_{algo_b}.png'
+        _maybe_save(fig, output_dir, fname, save, subdir='figures/pairwise')
+        return fig
+
+    fig, ax = plt.subplots(figsize=(max(9, n_metrics * 2.0), 6))
+    x = np.arange(n_metrics)
+    width = 0.35
+    ghost_alpha = 0.22
+
+    # Ghost bars (unfiltered means, lighter shade) — rendered first (behind)
+    for i, m in enumerate(metrics_data):
+        ax.bar(x[i] - width / 2, m['a_raw_norm'], width,
+               color=color_a, alpha=ghost_alpha, zorder=1)
+        ax.bar(x[i] + width / 2, m['b_raw_norm'], width,
+               color=color_b, alpha=ghost_alpha, zorder=1)
+
+    # Solid bars (intersection means) — rendered in front
+    bars_a = ax.bar(x - width / 2, [m['a_int_norm'] for m in metrics_data], width,
+                    color=color_a, label=algo_a, alpha=0.9, zorder=2)
+    bars_b = ax.bar(x + width / 2, [m['b_int_norm'] for m in metrics_data], width,
+                    color=color_b, label=algo_b, alpha=0.9, zorder=2)
+
+    # Raw value annotations on solid bars
+    def _fmt(v):
+        if np.isnan(v):
+            return ''
+        if abs(v) >= 1000:
+            return f'{v:.0f}'
+        if abs(v) >= 10:
+            return f'{v:.1f}'
+        return f'{v:.2f}'
+
+    for bar, m in zip(bars_a, metrics_data):
+        h = bar.get_height()
+        if not np.isnan(h) and h > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    _fmt(m['a_int']), ha='center', va='bottom', fontsize=7, rotation=45)
+    for bar, m in zip(bars_b, metrics_data):
+        h = bar.get_height()
+        if not np.isnan(h) and h > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.015,
+                    _fmt(m['b_int']), ha='center', va='bottom', fontsize=7, rotation=45)
+
+    # Reference line at 1.0 (equal performance)
+    ax.axhline(1.0, color='black', linewidth=0.8, linestyle='--', alpha=0.4, zorder=0)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([m['label'] for m in metrics_data], fontsize=9)
+    ax.set_ylabel('Relative performance (1.0 = equal,  > 1.0 = worse)', fontsize=9)
+    ax.set_title(f'Intersection comparison: {algo_a} vs {algo_b}\n'
+                 f'(metrics normalised to intersection-best value)')
+    ax.set_ylim(bottom=0)
+    ax.grid(axis='y', alpha=0.3)
+
+    # Legend: solid + ghost
+    ghost_a = mpatches.Patch(color=color_a, alpha=ghost_alpha,
+                              label=f'{algo_a} (all successes)')
+    ghost_b = mpatches.Patch(color=color_b, alpha=ghost_alpha,
+                              label=f'{algo_b} (all successes)')
+    solid_handles, solid_labels = ax.get_legend_handles_labels()
+    ax.legend(handles=solid_handles + [ghost_a, ghost_b],
+              labels=solid_labels + [f'{algo_a} (all successes)',
+                                      f'{algo_b} (all successes)'],
+              framealpha=0.9, fontsize=8, loc='upper right')
+
+    # Bottom annotation
+    annot = (f'Intersection: N = {N} graphs (both succeeded)   |   '
+             f'{algo_a}: {len(a_graphs)}/{n_problems} problems succeeded   |   '
+             f'{algo_b}: {len(b_graphs)}/{n_problems} problems succeeded')
+    fig.text(0.5, 0.01, annot, ha='center', va='bottom', fontsize=8,
+             style='italic', color='dimgray',
+             bbox=dict(boxstyle='round,pad=0.3', facecolor='lightyellow', alpha=0.6))
+
+    plt.tight_layout(rect=[0, 0.07, 1, 1])
+
+    fname = f'intersection_{algo_a}_vs_{algo_b}.png'
+    _maybe_save(fig, output_dir, fname, save, subdir='figures/pairwise')
     return fig

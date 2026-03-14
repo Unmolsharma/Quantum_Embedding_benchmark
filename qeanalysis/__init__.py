@@ -53,6 +53,7 @@ from qeanalysis.plots import (
     plot_success_by_nodes, plot_success_by_density,
     plot_graph_indexed_chain, plot_graph_indexed_time,
     plot_graph_indexed_success,
+    plot_max_chain_distribution, plot_intersection_comparison,
 )
 from qeanalysis.export import df_to_latex, export_tables
 from qeanalysis.filters import shared_graph_filter
@@ -77,6 +78,7 @@ __all__ = [
     'plot_success_by_nodes', 'plot_success_by_density',
     'plot_graph_indexed_chain', 'plot_graph_indexed_time',
     'plot_graph_indexed_success',
+    'plot_max_chain_distribution', 'plot_intersection_comparison',
     # Export
     'df_to_latex', 'export_tables',
     # Filters
@@ -254,6 +256,15 @@ class BenchmarkAnalysis:
         return plot_graph_indexed_success(self._df, x_mode,
                                           output_dir=self.output_dir, save=save)
 
+    def plot_max_chain_distribution(self, save: bool = True) -> plt.Figure:
+        return plot_max_chain_distribution(self._df,
+                                           output_dir=self.output_dir, save=save)
+
+    def plot_intersection_comparison(self, algo_a: str, algo_b: str,
+                                      save: bool = True) -> plt.Figure:
+        return plot_intersection_comparison(self._df, algo_a, algo_b,
+                                             output_dir=self.output_dir, save=save)
+
     # ── Export ────────────────────────────────────────────────────────────────
 
     def export_latex(self, output_dir=None) -> None:
@@ -345,6 +356,10 @@ class BenchmarkAnalysis:
              lambda: plot_chain_distribution(
                  self._df, algo_palette=palette,
                  output_dir=self.output_dir, save=True))
+        _run('max_chain_length_kde',
+             lambda: plot_max_chain_distribution(
+                 self._df, algo_palette=palette,
+                 output_dir=self.output_dir, save=True))
         _run('chain_length_violin',
              lambda: plot_distributions(
                  self._df, 'avg_chain_length', algo_palette=palette,
@@ -384,6 +399,10 @@ class BenchmarkAnalysis:
             _run(f'scatter_{a}_vs_{b}',
                  lambda a=a, b=b: plot_head_to_head(
                      self._df, a, b, output_dir=self.output_dir, save=True))
+            _run(f'intersection_{a}_vs_{b}',
+                 lambda a=a, b=b: plot_intersection_comparison(
+                     self._df, a, b, algo_palette=palette,
+                     output_dir=self.output_dir, save=True))
 
         # ── Success plots ─────────────────────────────────────────────────
         _run('success_rate_heatmap',
@@ -398,11 +417,16 @@ class BenchmarkAnalysis:
                  self._df, algo_palette=palette,
                  output_dir=self.output_dir, save=True))
 
-        # ── Graph-indexed plots (3 x_modes × 3 metrics = 9 plots) ────────
+        # ── Graph-indexed plots (3 x_modes × 4 metrics = 12 plots) ──────
         for x_mode in ('by_graph_id', 'by_n_nodes', 'by_density'):
             _run(f'graph_indexed/{x_mode}/chain_length',
                  lambda xm=x_mode: plot_graph_indexed_chain(
                      self._df, xm, algo_palette=palette,
+                     output_dir=self.output_dir, save=True))
+            _run(f'graph_indexed/{x_mode}/max_chain_length',
+                 lambda xm=x_mode: plot_graph_indexed_chain(
+                     self._df, xm, algo_palette=palette,
+                     metric='max_chain_length',
                      output_dir=self.output_dir, save=True))
             _run(f'graph_indexed/{x_mode}/embedding_time',
                  lambda xm=x_mode: plot_graph_indexed_time(
@@ -493,12 +517,13 @@ class BenchmarkAnalysis:
             '## Figures\n',
             '### distributions/\n',
             '- `chain_length_kde.png` — overlaid KDE of avg chain length per algorithm\n',
+            '- `max_chain_length_kde.png` — overlaid KDE of max chain length per algorithm\n',
             '- `chain_length_violin.png` — violin + box of chain length distribution\n',
             '- `embedding_time_violin.png` — violin + box of wall time distribution\n',
             '- `chain_length_by_category.png` — heatmap: mean chain length by algo × graph category\n',
             '- `consistency_cv.png` — coefficient of variation for time and chain length\n',
             '\n### graph_indexed/\n',
-            'Nine plots organised into three x-axis variants:\n',
+            'Twelve plots organised into three x-axis variants:\n',
             '- **by_graph_id/** — one position per graph ID (categorical). Use this to see\n',
             '  exactly which graphs are hard or easy. Section labels mark graph categories.\n',
             '- **by_n_nodes/** — x encodes node count (numeric). Use this to see scaling\n',
@@ -507,7 +532,9 @@ class BenchmarkAnalysis:
             '  edge density affects embeddability and chain length.\n',
             '\nEach directory contains:\n',
             '- `chain_length.png` — avg chain length per trial (dots) + per-graph mean\n',
-            '  (diamond). Shared-graph filter applied: only graphs all algorithms solved.\n',
+            '  (diamond). Each algorithm shown only where it succeeded; absence = failure.\n',
+            '- `max_chain_length.png` — same structure as chain_length.png but shows max\n',
+            '  chain length per run. NaN values (pre-SQLite batches) are silently dropped.\n',
             '- `embedding_time.png` — wall time per trial on log scale. No shared-graph\n',
             '  filter; timeout runs shown with triangle-up marker.\n',
             '- `success.png` — success rate heatmap (algorithm × graph, red=0 green=1).\n',
@@ -518,6 +545,9 @@ class BenchmarkAnalysis:
             '\n### pairwise/\n',
             '- `win_rate_matrix.png` — N×N heatmap: % of problems where row algo beats col algo\n',
             '- `scatter_{A}_vs_{B}.png` — one per algorithm pair; diagonal = equal performance\n',
+            '- `intersection_{A}_vs_{B}.png` — grouped bar chart on shared-success graphs only.\n',
+            '  5 metrics normalised to intersection-best. Ghost bars show unfiltered means.\n',
+            '  Annotation shows intersection N and per-algo success counts.\n',
             '\n### success/\n',
             '- `success_rate_heatmap.png` — algo × all-graphs heatmap with raw fractions\n',
             '- `success_rate_by_nodes.png`, `success_rate_by_density.png` — success vs graph properties\n',
