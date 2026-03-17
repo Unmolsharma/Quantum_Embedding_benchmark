@@ -195,9 +195,11 @@ def benchmark_one(source_graph: nx.Graph,
         if uses_subprocess and _HAS_RESOURCE:
             _rusage_before = _resource.getrusage(_resource.RUSAGE_CHILDREN)
         _cpu_start = time.process_time()
+        _wall_start = time.perf_counter()
 
         result = algo.embed(source_graph, target_graph, timeout=timeout, **kwargs)
 
+        _wall_elapsed = time.perf_counter() - _wall_start
         _cpu_elapsed = time.process_time() - _cpu_start
         if uses_subprocess and _HAS_RESOURCE:
             _rusage_after = _resource.getrusage(_resource.RUSAGE_CHILDREN)
@@ -230,7 +232,7 @@ def benchmark_one(source_graph: nx.Graph,
             return EmbeddingResult(
                 **fail_base,
                 status='INVALID_OUTPUT',
-                wall_time=result.get('time', 0.0),
+                wall_time=_wall_elapsed,
                 cpu_time=_cpu_elapsed,
                 algorithm_version=algo_version,
                 error=(
@@ -279,7 +281,7 @@ def benchmark_one(source_graph: nx.Graph,
                 trial=trial,
                 success=True,
                 status=status,
-                wall_time=result.get('time', 0.0),
+                wall_time=_wall_elapsed,
                 cpu_time=_cpu_elapsed,
                 is_valid=True,
                 embedding=raw_embedding,
@@ -313,7 +315,7 @@ def benchmark_one(source_graph: nx.Graph,
             return EmbeddingResult(
                 **fail_base,
                 status=status,
-                wall_time=result.get('time', 0.0),
+                wall_time=_wall_elapsed,
                 cpu_time=_cpu_elapsed,
                 is_valid=False,
                 embedding=raw_embedding,  # preserve partial/invalid output for diagnostics
