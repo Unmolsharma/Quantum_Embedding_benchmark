@@ -168,10 +168,10 @@ def save_graph(graph: nx.Graph, graph_id: int, name: str, category: str,
         'graph': graph_data
     }
     
-    filepath = category_dir / f"{name}.json"
+    filepath = category_dir / f"{graph_id:03d}_{name}.json"
     with open(filepath, 'w') as f:
         json.dump(data, f, indent=2)
-    
+
     return filepath
 
 
@@ -208,29 +208,46 @@ def load_test_graphs(selection: str = "*",
     
     selected_ids = parse_graph_selection(selection)
     is_wildcard = -1 in selected_ids
-    
+
     results = []
-    
+    loaded_files: List[Tuple[int, Path]] = []
+
     for json_file in sorted(TEST_GRAPHS_DIR.rglob("*.json")):
-        if json_file.name == "REGISTRY.md":
+        # Skip non-graph files
+        if json_file.name.startswith("REGISTRY"):
             continue
-        
-        gid, name, graph, meta = load_graph(json_file)
-        
+
+        # Extract graph ID from filename prefix (e.g. "001_K4.json" → 1).
+        # Files that don't follow the {id}_{name}.json scheme are skipped so
+        # that stray JSON files in the directory never cause a crash.
+        stem = json_file.stem
+        prefix = stem.split('_', 1)[0]
+        try:
+            gid = int(prefix)
+        except ValueError:
+            continue
+
         if not is_wildcard and gid not in selected_ids:
-            continue
-        
+            continue  # skip without opening the file
+
+        gid, name, graph, meta = load_graph(json_file)
+
         n = graph.number_of_nodes()
         if max_nodes and n > max_nodes:
             continue
         if min_nodes and n < min_nodes:
             continue
-        
+
         results.append((gid, name, graph))
-    
-    # Sort by ID
+        loaded_files.append((gid, json_file))
+
+    # Verify integrity of only the loaded graphs. Raises RuntimeError if any
+    # file has been modified since the manifest was generated — propagates up
+    # through run_full_benchmark() and cancels the run before any trials start.
+    if loaded_files and MANIFEST_PATH.exists():
+        verify_manifest(files=loaded_files)
+
     results.sort(key=lambda x: x[0])
-    
     return [(name, graph) for _, name, graph in results]
 
 
@@ -438,30 +455,55 @@ def generate_manifest(graph_dir: Path = TEST_GRAPHS_DIR,
                       manifest_path: Path = MANIFEST_PATH) -> Path:
     """Compute SHA-256 hashes for every graph JSON and write manifest file.
 
-    Format (two spaces between path and hash, matching sha256sum convention):
-        complete/K4.json  a3f2b8c9...
-        random/er_n10.json  7b1c3d5e...
+    Format — graph ID (integer) followed by two spaces and the hash:
+        1  a3f2b8c9...
+        11  7b1c3d5e...
+
+    Only files following the {id}_{name}.json naming scheme are included.
+    The ID is parsed from the filename prefix so the manifest remains valid
+    even if files are moved to a different subdirectory.
 
     Returns:
         Path to the written manifest file.
     """
     entries = []
     for json_file in sorted(graph_dir.rglob("*.json")):
-        rel = json_file.relative_to(graph_dir)
+        stem = json_file.stem
+        prefix = stem.split('_', 1)[0]
+        try:
+            gid = int(prefix)
+        except ValueError:
+            continue
         digest = hashlib.sha256(json_file.read_bytes()).hexdigest()
-        entries.append(f"{rel}  {digest}")
+        entries.append((gid, digest))
 
-    manifest_path.write_text("\n".join(entries) + "\n")
+    entries.sort(key=lambda x: x[0])
+    manifest_path.write_text(
+        "\n".join(f"{gid}  {digest}" for gid, digest in entries) + "\n"
+    )
     return manifest_path
 
 
 def verify_manifest(graph_dir: Path = TEST_GRAPHS_DIR,
-                    manifest_path: Path = MANIFEST_PATH) -> None:
-    """Verify every graph file matches its recorded SHA-256 hash.
+                    manifest_path: Path = MANIFEST_PATH,
+                    files: Optional[List[Tuple[int, Path]]] = None) -> None:
+    """Verify graph files match their recorded SHA-256 hashes.
+
+    The manifest is keyed by integer graph ID, so files can be moved between
+    subdirectories without triggering a false integrity failure.
+
+    Args:
+        graph_dir:     Root directory containing graph JSON files (used only
+                       when files=None for a full scan).
+        manifest_path: Path to the manifest file.
+        files:         If provided, only verify these (graph_id, path) pairs.
+                       Files whose ID is absent from the manifest are silently
+                       skipped (new additions are allowed).
+                       If None, verify all files found under graph_dir.
 
     Raises:
         FileNotFoundError: if manifest does not exist.
-        RuntimeError: if any file is missing or its hash does not match.
+        RuntimeError: if any checked file is missing or its hash does not match.
     """
     if not manifest_path.exists():
         raise FileNotFoundError(
@@ -469,22 +511,45 @@ def verify_manifest(graph_dir: Path = TEST_GRAPHS_DIR,
             "Run: python -m qebench.graphs  (or generate_all()) to regenerate it."
         )
 
+    # Parse manifest into {graph_id: hash}
+    manifest: Dict[int, str] = {}
     with open(manifest_path) as f:
-        lines = [l.strip() for l in f if l.strip()]
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split("  ", 1)
+            if len(parts) == 2:
+                try:
+                    manifest[int(parts[0])] = parts[1]
+                except ValueError:
+                    pass  # skip malformed lines
 
-    for line in lines:
-        parts = line.rsplit("  ", 1)
-        if len(parts) != 2:
-            continue
-        rel_str, expected = parts
-        target = graph_dir / rel_str
+    # Determine which (gid, path) pairs to check
+    if files is not None:
+        targets: List[Tuple[int, Path]] = files
+    else:
+        # Full scan: extract IDs from filenames
+        targets = []
+        for json_file in sorted(graph_dir.rglob("*.json")):
+            stem = json_file.stem
+            prefix = stem.split('_', 1)[0]
+            try:
+                gid = int(prefix)
+            except ValueError:
+                continue
+            targets.append((gid, json_file))
+
+    for gid, target in targets:
         if not target.exists():
             raise RuntimeError(f"Graph file missing: {target}")
+        if gid not in manifest:
+            continue  # new graph not yet in manifest — allowed, skip check
         actual = hashlib.sha256(target.read_bytes()).hexdigest()
-        if actual != expected:
+        if actual != manifest[gid]:
             raise RuntimeError(
-                f"Graph integrity check failed: {rel_str}\n"
-                f"  expected: {expected}\n"
+                f"Graph integrity check failed: {target.name} (id={gid})\n"
+                f"  expected: {manifest[gid]}\n"
                 f"  actual:   {actual}\n"
                 "The file has been modified. Re-run the graph generator to rebuild the manifest."
             )
