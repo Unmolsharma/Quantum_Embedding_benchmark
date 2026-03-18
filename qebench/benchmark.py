@@ -13,6 +13,7 @@ import hashlib
 import multiprocessing
 import os
 import queue
+import statistics
 import sys
 import threading
 import time
@@ -386,6 +387,86 @@ def _keypress_cancel_listener(cancel_flag: threading.Event) -> None:
         pass
 
 
+def _algo_topo_compatible(algo_name: str, topo_name: str) -> bool:
+    """Return True if algo_name supports topo_name (or has no restriction).
+
+    Matching is prefix-based: supported_topologies=['chimera'] matches
+    'chimera_4x4x4', 'chimera_16x16x4', etc.
+    """
+    algo = ALGORITHM_REGISTRY.get(algo_name)
+    if algo is None:
+        return True  # unknown algo — let it fail naturally later
+    supported = getattr(algo, 'supported_topologies', None)
+    if supported is None:
+        return True
+    topo_lower = topo_name.lower()
+    return any(topo_lower.startswith(s.lower()) for s in supported)
+
+
+def _print_warn_summary(warn_registry: dict, log_dir: Path) -> None:
+    """Print the end-of-run warning summary block. No-op if registry is empty."""
+    if not warn_registry:
+        return
+
+    # Count total warning events across all categories
+    total = 0
+    if 'TOPOLOGY_INCOMPATIBLE' in warn_registry:
+        total += len(warn_registry['TOPOLOGY_INCOMPATIBLE']['entries'])
+    if 'INVALID_OUTPUT' in warn_registry:
+        total += sum(warn_registry['INVALID_OUTPUT'].values())
+    if 'CRASH' in warn_registry:
+        total += sum(v['count'] for v in warn_registry['CRASH'].values())
+    if 'TIMING_OUTLIER' in warn_registry:
+        total += sum(warn_registry['TIMING_OUTLIER'].values())
+    if 'ALL_ALGORITHMS_FAILED' in warn_registry:
+        total += len(warn_registry['ALL_ALGORITHMS_FAILED'])
+    if total == 0:
+        return
+
+    print(f"\n⚠️  Warnings ({total} total):")
+
+    if 'TOPOLOGY_INCOMPATIBLE' in warn_registry:
+        entry = warn_registry['TOPOLOGY_INCOMPATIBLE']
+        by_algo: dict = {}
+        for algo, topo, _ in entry['entries']:
+            by_algo.setdefault(algo, []).append(topo)
+        for algo, topos in by_algo.items():
+            print(f"   TOPOLOGY_INCOMPATIBLE  {algo} incompatible with {', '.join(topos)}")
+        print(f"                          {entry['total_skipped']:,} trials skipped before run.")
+
+    if 'INVALID_OUTPUT' in warn_registry:
+        counts = warn_registry['INVALID_OUTPUT']
+        total_inv = sum(counts.values())
+        detail = "  ".join(f"{a}: {n}" for a, n in counts.items())
+        print(f"   INVALID_OUTPUT         {total_inv} trials had invalid embeddings.")
+        print(f"                          {detail}")
+
+    if 'CRASH' in warn_registry:
+        crashes = warn_registry['CRASH']
+        total_crash = sum(v['count'] for v in crashes.values())
+        first_err = next(iter(crashes.values()))['first_error']
+        detail = "  ".join(f"{a}: {v['count']}" for a, v in crashes.items())
+        err_suffix = f'  (first error: "{first_err}")' if first_err else ""
+        print(f"   CRASH                  {total_crash} trials raised unhandled exceptions.")
+        print(f"                          {detail}{err_suffix}")
+
+    if 'TIMING_OUTLIER' in warn_registry:
+        outliers = warn_registry['TIMING_OUTLIER']
+        total_out = sum(outliers.values())
+        detail = "  ".join(f"{a} on {t}: {n}" for (a, t), n in outliers.items())
+        print(f"   TIMING_OUTLIER         {total_out} runs exceeded 10× median wall time.")
+        print(f"                          {detail}")
+
+    if 'ALL_ALGORITHMS_FAILED' in warn_registry:
+        failed = warn_registry['ALL_ALGORITHMS_FAILED']
+        shown = ', '.join(failed[:5])
+        ellipsis = '...' if len(failed) > 5 else ''
+        print(f"   ALL_ALGORITHMS_FAILED  {len(failed)} problem(s) had no successful embedding.")
+        print(f"                          {shown}{ellipsis}")
+
+    print(f"\nFull warning details: {log_dir.resolve()}")
+
+
 def _strip_truncated_jsonl(filepath: Path) -> None:
     """Remove a potentially truncated last line from a worker JSONL file.
 
@@ -651,8 +732,25 @@ class EmbeddingBenchmark:
             print(f"⚠️  Unknown algorithms (skipped): {missing}")
             print(f"   Available: {available}")
 
-        total_measured = len(problems) * len(valid_methods) * n_trials * len(topo_list)
-        total_warmup = len(problems) * len(valid_methods) * warmup_trials * len(topo_list)
+        # Pre-run topology compatibility check
+        _incompatible_pairs: set = set()  # (algo_name, topo_name) to skip
+        _topo_incompat_entries = []       # (algo_name, topo_name, n_skipped)
+        for algo_name in valid_methods:
+            for _, _, topo_name in topo_list:
+                if not _algo_topo_compatible(algo_name, topo_name):
+                    n_skip = len(problems) * n_trials
+                    _incompatible_pairs.add((algo_name, topo_name))
+                    _topo_incompat_entries.append((algo_name, topo_name, n_skip))
+
+        if _topo_incompat_entries:
+            print("⚠️  Pre-run checks:")
+            for algo_name, topo_name, n_skip in _topo_incompat_entries:
+                print(f"   {algo_name} is not compatible with topology {topo_name}"
+                      f" — {n_skip:,} trials skipped.")
+
+        n_compatible_combos = len(valid_methods) * len(topo_list) - len(_incompatible_pairs)
+        total_measured = len(problems) * n_compatible_combos * n_trials
+        total_warmup = len(problems) * n_compatible_combos * warmup_trials
 
         if n_workers > 1 and warmup_trials > 0:
             print(f"⚠️  Warmup trials skipped (not supported with n_workers > 1).")
@@ -699,12 +797,22 @@ class EmbeddingBenchmark:
             f"Batch {batch_id} starting: {total_measured} planned runs, n_workers={n_workers}"
         )
 
+        # Warning registry — accumulates across the entire run; printed in end summary.
+        _warn_registry: dict = {}
+        if _topo_incompat_entries:
+            _warn_registry['TOPOLOGY_INCOMPATIBLE'] = {
+                'entries': _topo_incompat_entries,
+                'total_skipped': sum(n for _, _, n in _topo_incompat_entries),
+            }
+
         # Build flat task list upfront — same order as the nested loops.
         # Enables accurate cancel tracking for both sequential and parallel paths.
         all_tasks = []
         for _, target_graph, topo_name in topo_list:
             for problem_name, source_graph in problems:
                 for algo_name in valid_methods:
+                    if (algo_name, topo_name) in _incompatible_pairs:
+                        continue
                     for trial in range(n_trials):
                         trial_seed = _derive_seed(seed, algo_name, problem_name, topo_name, trial)
                         all_tasks.append((source_graph, target_graph, algo_name, timeout,
@@ -750,6 +858,8 @@ class EmbeddingBenchmark:
                                   f"e={source_graph.number_of_edges()})")
 
                         for algo_name in valid_methods:
+                            if (algo_name, topo_name) in _incompatible_pairs:
+                                continue
                             # Warm-up trials (results discarded)
                             for w in range(warmup_trials):
                                 current_run += 1
@@ -795,6 +905,15 @@ class EmbeddingBenchmark:
                                 batch_logger.append_footer(log_path, result)
                                 batch_logger.log_run(result, trial_seed)
 
+                                if result.status == 'INVALID_OUTPUT':
+                                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                                    _inv[result.algorithm] = _inv.get(result.algorithm, 0) + 1
+                                elif result.status == 'CRASH':
+                                    _cr = _warn_registry.setdefault('CRASH', {})
+                                    if result.algorithm not in _cr:
+                                        _cr[result.algorithm] = {'count': 0, 'first_error': result.error}
+                                    _cr[result.algorithm]['count'] += 1
+
                                 self.results.append(result)
                                 with open(worker_file, "a") as wf:
                                     rec = result.to_jsonl_dict()
@@ -825,7 +944,6 @@ class EmbeddingBenchmark:
 
             if not verbose:
                 print()  # newline after progress bar
-                batch_logger.flush_warning_buffer()
 
         # ── Parallel path (n_workers > 1) ──────────────────────────────────────
         else:
@@ -860,6 +978,19 @@ class EmbeddingBenchmark:
                         continue
                     completed_display += 1
                     batch_logger.log_run_from_display(display)
+
+                    _dstatus = display.get('status', '')
+                    if _dstatus == 'INVALID_OUTPUT':
+                        _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                        _dalgo = display['algorithm']
+                        _inv[_dalgo] = _inv.get(_dalgo, 0) + 1
+                    elif _dstatus == 'CRASH':
+                        _cr = _warn_registry.setdefault('CRASH', {})
+                        _dalgo = display['algorithm']
+                        if _dalgo not in _cr:
+                            _cr[_dalgo] = {'count': 0, 'first_error': display.get('error')}
+                        _cr[_dalgo]['count'] += 1
+
                     if verbose:
                         algo = display['algorithm']
                         prob = display['problem_name']
@@ -882,7 +1013,6 @@ class EmbeddingBenchmark:
 
             if not verbose:
                 print()
-                batch_logger.flush_warning_buffer()
 
             if _cancel_flag.is_set():
                 _cancelled = True
@@ -951,6 +1081,36 @@ class EmbeddingBenchmark:
         # ── Normal completion ──────────────────────────────────────────────────
         batch_wall_time = time.perf_counter() - _batch_start
 
+        # Post-run warning stats: TIMING_OUTLIER and ALL_ALGORITHMS_FAILED
+        _times_by_key: dict = {}
+        for r in self.results:
+            if r.success:
+                _times_by_key.setdefault((r.algorithm, r.topology_name), []).append(r.wall_time)
+        _outlier_counts: dict = {}
+        for (algo, topo), times in _times_by_key.items():
+            if len(times) >= 2:
+                med = statistics.median(times)
+                n_out = sum(1 for t in times if t > 10 * med)
+                if n_out:
+                    _outlier_counts[(algo, topo)] = n_out
+        if _outlier_counts:
+            _warn_registry['TIMING_OUTLIER'] = _outlier_counts
+
+        _prob_topo_seen: set = set()
+        _prob_topo_success: set = set()
+        for r in self.results:
+            _prob_topo_seen.add((r.problem_name, r.topology_name))
+            if r.success:
+                _prob_topo_success.add((r.problem_name, r.topology_name))
+        _all_failed = sorted((p, t) for (p, t) in _prob_topo_seen
+                             if (p, t) not in _prob_topo_success)
+        if _all_failed:
+            _n_topos = len(set(t for _, t in _prob_topo_seen))
+            if _n_topos > 1:
+                _warn_registry['ALL_ALGORITHMS_FAILED'] = [f"{p} [{t}]" for p, t in _all_failed]
+            else:
+                _warn_registry['ALL_ALGORITHMS_FAILED'] = [p for p, _ in _all_failed]
+
         print("\n" + "=" * 80)
         print("Benchmark complete!")
 
@@ -976,6 +1136,8 @@ class EmbeddingBenchmark:
         _out = Path(output_dir) if output_dir else None
         final_dir = self.results_manager.move_to_output(batch_dir, output_dir=_out)
         self.results_manager.save_results(self.results, final_dir, config=config)
+        _print_warn_summary(_warn_registry, final_dir / "logs")
+        print("=" * 80)
         return final_dir
 
 
@@ -1212,6 +1374,7 @@ def load_benchmark(batch_id: Optional[str] = None,
     _cancelled = False
     results = []
     done_count = 0
+    _warn_registry: dict = {}
 
     # ── Sequential path ────────────────────────────────────────────────────────
     if n_workers == 1:
@@ -1238,6 +1401,15 @@ def load_benchmark(batch_id: Optional[str] = None,
                     )
                 batch_logger.append_footer(log_path, result)
                 batch_logger.log_run(result, trial_seed)
+
+                if result.status == 'INVALID_OUTPUT':
+                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                    _inv[result.algorithm] = _inv.get(result.algorithm, 0) + 1
+                elif result.status == 'CRASH':
+                    _cr = _warn_registry.setdefault('CRASH', {})
+                    if result.algorithm not in _cr:
+                        _cr[result.algorithm] = {'count': 0, 'first_error': result.error}
+                    _cr[result.algorithm]['count'] += 1
 
                 results.append(result)
                 with open(worker_file, "a") as wf:
@@ -1266,7 +1438,6 @@ def load_benchmark(batch_id: Optional[str] = None,
 
         if not verbose:
             print()
-            batch_logger.flush_warning_buffer()
 
     # ── Parallel path ──────────────────────────────────────────────────────────
     else:
@@ -1299,6 +1470,19 @@ def load_benchmark(batch_id: Optional[str] = None,
                     continue
                 completed_display += 1
                 batch_logger.log_run_from_display(display)
+
+                _dstatus = display.get('status', '')
+                if _dstatus == 'INVALID_OUTPUT':
+                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                    _dalgo = display['algorithm']
+                    _inv[_dalgo] = _inv.get(_dalgo, 0) + 1
+                elif _dstatus == 'CRASH':
+                    _cr = _warn_registry.setdefault('CRASH', {})
+                    _dalgo = display['algorithm']
+                    if _dalgo not in _cr:
+                        _cr[_dalgo] = {'count': 0, 'first_error': display.get('error')}
+                    _cr[_dalgo]['count'] += 1
+
                 if verbose:
                     algo = display['algorithm']
                     prob = display['problem_name']
@@ -1321,7 +1505,6 @@ def load_benchmark(batch_id: Optional[str] = None,
 
         if not verbose:
             print()
-            batch_logger.flush_warning_buffer()
 
         if _cancel_flag.is_set():
             _cancelled = True
@@ -1401,6 +1584,36 @@ def load_benchmark(batch_id: Optional[str] = None,
                                            if k in valid_fields})
                     )
 
+    # Post-run warning stats using all_results (full picture including original run)
+    _times_by_key: dict = {}
+    for r in all_results:
+        if r.success:
+            _times_by_key.setdefault((r.algorithm, r.topology_name), []).append(r.wall_time)
+    _outlier_counts: dict = {}
+    for (algo, topo), times in _times_by_key.items():
+        if len(times) >= 2:
+            med = statistics.median(times)
+            n_out = sum(1 for t in times if t > 10 * med)
+            if n_out:
+                _outlier_counts[(algo, topo)] = n_out
+    if _outlier_counts:
+        _warn_registry['TIMING_OUTLIER'] = _outlier_counts
+
+    _prob_topo_seen: set = set()
+    _prob_topo_success: set = set()
+    for r in all_results:
+        _prob_topo_seen.add((r.problem_name, r.topology_name))
+        if r.success:
+            _prob_topo_success.add((r.problem_name, r.topology_name))
+    _all_failed = sorted((p, t) for (p, t) in _prob_topo_seen
+                         if (p, t) not in _prob_topo_success)
+    if _all_failed:
+        _n_topos = len(set(t for _, t in _prob_topo_seen))
+        if _n_topos > 1:
+            _warn_registry['ALL_ALGORITHMS_FAILED'] = [f"{p} [{t}]" for p, t in _all_failed]
+        else:
+            _warn_registry['ALL_ALGORITHMS_FAILED'] = [p for p, _ in _all_failed]
+
     n_success = sum(1 for r in all_results if r.success)
     batch_logger.info(
         f"Resume of {batch_id} complete: {n_success}/{len(all_results)} succeeded "
@@ -1420,6 +1633,7 @@ def load_benchmark(batch_id: Optional[str] = None,
     _rm = ResultsManager(str(_results_root), unfinished_dir=str(_unfinished))
     final_dir = _rm.move_to_output(batch_dir)
     _rm.save_results(all_results, final_dir, config=config)
+    _print_warn_summary(_warn_registry, final_dir / "logs")
     return final_dir
 
 

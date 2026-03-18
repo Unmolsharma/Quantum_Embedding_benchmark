@@ -92,6 +92,11 @@ class EmbeddingAlgorithm(ABC):
 
     _uses_subprocess: bool = False
 
+    supported_topologies: Optional[List[str]] = None
+    """Topology families this algorithm supports. None means all topologies.
+    A list of prefix strings restricts to matching topology names
+    (e.g. ['chimera'] matches 'chimera_4x4x4', 'chimera_16x16x4', etc.)."""
+
     @property
     def version(self) -> str:
         """Algorithm version string. Override in subclasses to tag results."""
@@ -313,6 +318,7 @@ class AtomAlgorithm(EmbeddingAlgorithm):
     """ATOM — grows its own Chimera topology dynamically."""
 
     _uses_subprocess = True
+    supported_topologies = ['chimera']
 
     def embed(self, source_graph, target_graph, timeout=60.0, **kwargs):
         atom_dir = Path("./algorithms/atom")

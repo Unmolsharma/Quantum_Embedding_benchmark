@@ -1,0 +1,91 @@
+# Topology Compatibility & Run-Level Warning Aggregation — Feature Specification
+
+---
+
+## Feature 1: Topology Compatibility Checking
+
+### Algorithm Declaration
+
+Algorithms declare supported topologies as an optional class attribute in the suggestions tier of the contract:
+
+```python
+class ATOMEmbedder(EmbeddingAlgorithm):
+    supported_topologies = ['chimera']  # None or omitted = all topologies supported
+```
+
+`None` or absence of the attribute means the algorithm supports all topologies. A list of strings restricts to named topology families. Matching is prefix-based — `'chimera'` matches `chimera_4x4x4`, `chimera_16x16x4`, etc.
+
+### Pre-Run Validation
+
+Before building the task list and before any workers are spawned, the runner checks every `(algorithm, topology)` combination. Incompatible combinations are removed from the task list entirely. The total task count shown at run start reflects only the tasks that will actually run.
+
+For each incompatible combination found, a `TOPOLOGY_INCOMPATIBLE` entry is added to the run-level warning registry with the algorithm name, topology name, and number of trials skipped.
+
+Incompatibility warnings are printed immediately before the run starts, before the progress bar or trial output:
+
+```
+⚠️  Pre-run checks:
+   ATOM is not compatible with topology pegasus_16 — 450 trials skipped.
+   ATOM is not compatible with topology zephyr_12 — 225 trials skipped.
+
+Starting benchmark: 3,825 / 4,500 trials scheduled (675 skipped).
+```
+
+---
+
+## Feature 2: Run-Level Warning Aggregation
+
+### Warning Registry
+
+The benchmark run maintains a warning registry — a dict mapping warning type to accumulated context. It is populated throughout execution by both the main process and, in the parallel path, passed back via the result display dict.
+
+Warning types that feed into the registry:
+
+| Warning Type | Trigger | Aggregated Info |
+|---|---|---|
+| `TOPOLOGY_INCOMPATIBLE` | Pre-run compatibility check | algorithm, topology, trials skipped |
+| `INVALID_OUTPUT` | Layer 1 or 2 validation failure | algorithm, count |
+| `TIMING_OUTLIER` | wall_time > 10× median for (algorithm, graph class) | algorithm, topology, count |
+| `SEED_NONDETERMINISTIC` | Same seed produced different results | algorithm, count |
+| `CRASH` | Unhandled exception escaped `embed()` | algorithm, count, first error message |
+| `ALL_ALGORITHMS_FAILED` | Every algorithm failed on a graph instance | graph IDs |
+
+### Verbose Behaviour
+
+**`verbose=False`:** No per-trial warnings printed during the run. All warnings are suppressed until the end summary. The progress bar runs uninterrupted.
+
+**`verbose=True`:** Per-trial warnings are printed as they occur inline with trial output. The end summary is still printed regardless — it is always present whether or not per-trial warnings were shown.
+
+All warnings are written in full to the batch log regardless of verbose setting. The end summary links to the log directory so the user can inspect complete details.
+
+### End Summary Block
+
+Printed after the completion line, only if the warning registry is non-empty:
+
+```
+================================================================================
+Benchmark complete! 3,800 / 3,825 trials run.
+Total wall time: 14m 32s
+
+⚠️  Warnings (25 total):
+   TOPOLOGY_INCOMPATIBLE  ATOM incompatible with pegasus_16, zephyr_12
+                          675 trials skipped before run.
+
+   INVALID_OUTPUT         57 trials claimed success but failed validation.
+                          minorminer: 43    pssa: 14
+
+   CRASH                  3 trials raised unhandled exceptions.
+                          charme: 3   (first error: "CUDA out of memory")
+
+   TIMING_OUTLIER         12 runs exceeded 10× median wall time.
+                          charme on chimera_16: 12
+
+Full warning details: logs/runs/batch_2026-03-17_14-22-01/
+================================================================================
+```
+
+If no warnings were accumulated, the block is omitted entirely — clean runs print only the completion line and wall time.
+
+### Log Path Link
+
+The final line of the warning block always points to the batch log directory. This is an absolute path so it is usable regardless of working directory. On terminals that support hyperlinks (most modern terminals), the path is printed as a clickable link. On others it is printed as a plain path.

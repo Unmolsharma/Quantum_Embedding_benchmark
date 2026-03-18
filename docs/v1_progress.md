@@ -4,6 +4,18 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-18 — Topology compatibility + run-level warning registry**
+
+- **`supported_topologies` class attribute on `EmbeddingAlgorithm`:** Optional `List[str]` (default `None` = all topologies). Set to `['chimera']` on `AtomAlgorithm`. Matching is prefix-based — `'chimera'` matches `chimera_4x4x4`, `chimera_16x16x4`, etc.
+- **Pre-run compatibility check:** Before the task list is built, every `(algorithm, topology)` pair is tested via `_algo_topo_compatible()`. Incompatible pairs are collected, a pre-run warning is printed for each (`"atom is not compatible with topology pegasus_16 — 450 trials skipped."`), and those pairs are excluded from `all_tasks` and from the sequential execution loop. `total_measured` and `total_runs` reflect only the tasks that will actually run. The incompatible combos are stored in the warning registry under `TOPOLOGY_INCOMPATIBLE`.
+- **Run-level warning registry:** `_warn_registry` dict accumulated throughout each run in both `run_full_benchmark()` and `load_benchmark()`. Warning types: `TOPOLOGY_INCOMPATIBLE` (pre-run), `INVALID_OUTPUT` and `CRASH` (accumulated per-trial in sequential and parallel display loops), `TIMING_OUTLIER` and `ALL_ALGORITHMS_FAILED` (computed post-run from `self.results`). TIMING_OUTLIER detects any (algo, topology) where ≥2 successful results have any trial exceeding 10× the median wall time. ALL_ALGORITHMS_FAILED identifies (problem, topology) pairs where no algorithm succeeded across all trials.
+- **End-of-run summary block:** Printed after results are saved, via `_print_warn_summary(warn_registry, log_dir)`. Groups TOPOLOGY_INCOMPATIBLE by algo, shows per-algo counts for INVALID_OUTPUT and CRASH (including first error message), per-(algo, topo) counts for TIMING_OUTLIER, and up to 5 problem names for ALL_ALGORITHMS_FAILED with `...` if more. Total warning count in header. No-op on a clean run — only prints when the registry is non-empty. Final line shows absolute path to `logs/` directory.
+- **`flush_warning_buffer()` removed from run paths:** The buffered `_ListHandler` approach (which dumped raw WARNING log messages after the progress bar) is replaced by the structured end summary. The `_ListHandler` / buffered mode in `BatchLogger` is still used to suppress mid-run WARNING log interleaving with the progress bar, but `flush_warning_buffer()` is no longer called — the summary takes its place.
+- **`smoke_test_warnings.py`** added at project root — visual smoke test covering all five scenarios: full registry, topology-only, mid-run warnings only, clean run (silent), and `_algo_topo_compatible()` correctness checks.
+- 215/215 tests pass.
+
+---
+
 **2026-03-18 — ATOM wrapper bug fixes + warning/progress bar display fix**
 
 - **ATOM index formula bug (critical):** The wrapper inferred ATOM's internal `topo_column` from the output as `max_y + 1`. ATOM always calls `expanding_border()` one final time after the last successful pass, which shifts all coordinates by +1 and adds 2 to `topo_column`, leaving an empty outer border. This meant `max_y_in_output = topo_column_internal - 2`, so the wrapper's column count was always 1 short. Every qubit at row > 0 received a wrong linear index (`x * wrong_ncols * 8 + ...`), while row-0 qubits were unaffected (multiplied by 0). Fix: use `target_graph.graph['columns']` (stored by dwave_networkx) as the column count, with a fallback of `round(sqrt(n_nodes / 8))` for non-dwave graphs. This explains why K4 (fits in 1 row) always succeeded while anything needing multiple rows failed with `INVALID_OUTPUT`.
