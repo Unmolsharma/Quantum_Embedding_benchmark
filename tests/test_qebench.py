@@ -1197,8 +1197,8 @@ class TestValidationIntegration:
         emb = {np.int64(0):[0,1], np.int64(1):[2,3], np.int64(2):[4,5]}
         result = _run_mock_algo(K3, small_target,
                                 {'success': True, 'embedding': emb, 'time': 0.01})
-        assert "Algorithm claimed success=True" in result.error
-        assert "embedding_size=3" in result.error
+        assert "returned embedding (size=3)" in result.error
+        assert "Layer 2" in result.error
 
     def test_layer1_failure_sets_invalid_output_status(self, small_target, K3):
         """Shared qubit in embedding → Layer 1 disjointness → INVALID_OUTPUT."""
@@ -1222,8 +1222,8 @@ class TestValidationIntegration:
                                 {'success': True,
                                  'embedding': {0:[0,1], 1:[1,4], 2:[4,5]},
                                  'time': 0.01})
-        assert "Algorithm claimed success=True" in result.error
-        assert "embedding_size=3" in result.error
+        assert "returned embedding (size=3)" in result.error
+        assert "Layer 1" in result.error
 
     def test_valid_mock_succeeds(self, small_target, K3):
         result = _run_mock_algo(K3, small_target,

@@ -26,7 +26,20 @@ import logging
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+
+# ── List-based log handler (for buffered warning mode) ──────────────────────────
+
+class _ListHandler(logging.Handler):
+    """Accumulates log records in a list instead of writing immediately."""
+
+    def __init__(self, level=logging.NOTSET):
+        super().__init__(level)
+        self.records: List[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
 
 
 # ── Per-run log helpers ─────────────────────────────────────────────────────────
@@ -104,9 +117,17 @@ class BatchLogger:
         self._logger: Optional[logging.Logger] = None
         self._file_handler: Optional[logging.FileHandler] = None
         self._stderr_handler: Optional[logging.StreamHandler] = None
+        self._list_handler: Optional[_ListHandler] = None
 
-    def setup(self) -> None:
+    def setup(self, buffered: bool = False) -> None:
         """Create log directories and configure the runner logger.
+
+        Args:
+            buffered: When True, WARNING messages are accumulated in memory
+                      instead of written to stderr immediately. Call
+                      flush_warning_buffer() to print them. Use this in
+                      non-verbose (progress bar) mode so warnings don't
+                      interleave with the \r-based bar.
 
         Idempotent — calling setup() twice against the same batch directory
         does not fail or overwrite existing logs.
@@ -132,11 +153,31 @@ class BatchLogger:
         self._file_handler.setFormatter(fmt)
         self._logger.addHandler(self._file_handler)
 
-        # WARNING+ also goes to stderr so critical issues are visible in real time
-        self._stderr_handler = logging.StreamHandler(sys.stderr)
-        self._stderr_handler.setLevel(logging.WARNING)
-        self._stderr_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
-        self._logger.addHandler(self._stderr_handler)
+        if buffered:
+            # Collect WARNING+ in memory; caller flushes after progress bar ends
+            self._list_handler = _ListHandler(level=logging.WARNING)
+            self._list_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            self._logger.addHandler(self._list_handler)
+        else:
+            # WARNING+ goes to stderr immediately so issues are visible in real time
+            self._stderr_handler = logging.StreamHandler(sys.stderr)
+            self._stderr_handler.setLevel(logging.WARNING)
+            self._stderr_handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+            self._logger.addHandler(self._stderr_handler)
+
+    def flush_warning_buffer(self) -> None:
+        """Print any buffered WARNING messages to stderr, then clear the buffer.
+
+        No-op when not in buffered mode or when there are no warnings.
+        Call this after the progress bar's final newline so warnings appear
+        as a clean block below the bar rather than interleaving with it.
+        """
+        if not self._list_handler or not self._list_handler.records:
+            return
+        formatter = self._list_handler.formatter or logging.Formatter('%(levelname)s: %(message)s')
+        for record in self._list_handler.records:
+            print(formatter.format(record), file=sys.stderr)
+        self._list_handler.records.clear()
 
     def teardown(self) -> None:
         """Flush and close all log handlers."""

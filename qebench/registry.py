@@ -362,7 +362,6 @@ class AtomAlgorithm(EmbeddingAlgorithm):
             # "x y k color" per qubit, then "Requires N qubits"
             # Each EB_Point has (x, y, k) = Chimera position, color = logical node
             embedding = {}
-            topo_column = 0
 
             for line in result.stdout.strip().split('\n'):
                 line = line.strip()
@@ -372,7 +371,6 @@ class AtomAlgorithm(EmbeddingAlgorithm):
                 if len(parts) == 4:
                     try:
                         x, y, k, color = int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])
-                        topo_column = max(topo_column, y + 1)
                         if color not in embedding:
                             embedding[color] = []
                         embedding[color].append((x, y, k))
@@ -382,10 +380,49 @@ class AtomAlgorithm(EmbeddingAlgorithm):
             if not embedding:
                 return {'embedding': {}, 'time': elapsed, 'success': False, 'status': 'FAILURE'}
 
-            # Convert (x, y, k) tuples to linear Chimera qubit indices
-            # Index = x * topo_column * 8 + y * 8 + k
+            # Convert ATOM's (x, y, k) Chimera coordinates to linear qubit indices
+            # using the TARGET graph's dimensions.
+            #
+            # The formula is: index = x * n_cols * 8 + y * 8 + k
+            # where n_cols is the number of columns in the target Chimera.
+            #
+            # We must NOT infer n_cols from ATOM's output (e.g. max_y + 1) because
+            # ATOM always calls expanding_border() one final time after the last
+            # successful pass, leaving an empty outer border column. This means
+            # max_y_in_output = topo_column_internal - 2, so max_y + 1 is always
+            # one short and all qubits at row > 0 get wrong indices.
+            #
+            # dwave_networkx stores the dimensions in target_graph.graph metadata.
+            n_cols = target_graph.graph.get('columns', None)
+            n_rows = target_graph.graph.get('rows', None)
+            if n_cols is None:
+                # Fallback for non-dwave_networkx graphs: infer from node count.
+                # Assumes square Chimera(n,n,4) — n*n*8 nodes.
+                import math
+                n_cols = max(1, int(round(math.sqrt(target_graph.number_of_nodes() / 8))))
+                n_rows = n_cols
+
+            # Bounds check: ATOM grows its own Chimera dynamically and may produce
+            # coordinates that exceed the target's dimensions. Such an embedding
+            # cannot be mapped to the target — return FAILURE immediately rather
+            # than converting to wrong qubit indices and claiming success.
+            if n_rows is not None:
+                all_positions = [p for ps in embedding.values() for p in ps]
+                atom_max_row = max(p[0] for p in all_positions)
+                atom_max_col = max(p[1] for p in all_positions)
+                if atom_max_row >= n_rows or atom_max_col >= n_cols:
+                    return {
+                        'embedding': {}, 'time': elapsed,
+                        'success': False, 'status': 'FAILURE',
+                        'error': (
+                            f"ATOM's embedding requires a "
+                            f"{atom_max_row + 1}×{atom_max_col + 1} Chimera "
+                            f"but target is {n_rows}×{n_cols}"
+                        ),
+                    }
+
             linear_embedding = {
-                color: [x * topo_column * 8 + y * 8 + k for x, y, k in positions]
+                color: [x * n_cols * 8 + y * 8 + k for x, y, k in positions]
                 for color, positions in embedding.items()
             }
 

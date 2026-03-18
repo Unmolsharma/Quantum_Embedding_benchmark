@@ -230,8 +230,8 @@ def benchmark_one(source_graph: nx.Graph,
         # ------------------------------------------------------------------
         layer2 = validate_layer2(result, source_graph, target_graph)
         if not layer2.passed:
-            _claimed_success = result.get('success', '<absent>')
             _emb_size = len(result.get('embedding') or {})
+            _outcome = f"returned embedding (size={_emb_size})" if _emb_size else "returned empty embedding"
             return EmbeddingResult(
                 **fail_base,
                 status='INVALID_OUTPUT',
@@ -239,8 +239,7 @@ def benchmark_one(source_graph: nx.Graph,
                 cpu_time=_cpu_elapsed,
                 algorithm_version=algo_version,
                 error=(
-                    f"Algorithm claimed success={_claimed_success}, "
-                    f"embedding_size={_emb_size}; "
+                    f"{_outcome}; "
                     f"Layer 2 [{layer2.check_name}]: {layer2.detail}"
                 ),
             )
@@ -309,8 +308,7 @@ def benchmark_one(source_graph: nx.Graph,
             # For other failures (TIMEOUT, CRASH, etc.), use the algorithm's error.
             if status == 'INVALID_OUTPUT' and layer1 is not None and not layer1.passed:
                 error_msg = (
-                    f"Algorithm claimed success=True, "
-                    f"embedding_size={len(raw_embedding)}; "
+                    f"returned embedding (size={len(raw_embedding)}); "
                     f"Layer 1 [{layer1.check_name}]: {layer1.detail}"
                 )
             else:
@@ -696,7 +694,7 @@ class EmbeddingBenchmark:
         workers_dir.mkdir(exist_ok=True)
 
         batch_logger = BatchLogger(batch_dir, batch_id)
-        batch_logger.setup()
+        batch_logger.setup(buffered=not verbose)
         batch_logger.info(
             f"Batch {batch_id} starting: {total_measured} planned runs, n_workers={n_workers}"
         )
@@ -827,6 +825,7 @@ class EmbeddingBenchmark:
 
             if not verbose:
                 print()  # newline after progress bar
+                batch_logger.flush_warning_buffer()
 
         # ── Parallel path (n_workers > 1) ──────────────────────────────────────
         else:
@@ -883,6 +882,7 @@ class EmbeddingBenchmark:
 
             if not verbose:
                 print()
+                batch_logger.flush_warning_buffer()
 
             if _cancel_flag.is_set():
                 _cancelled = True
@@ -1192,7 +1192,7 @@ def load_benchmark(batch_id: Optional[str] = None,
     workers_dir.mkdir(exist_ok=True)
 
     batch_logger = BatchLogger(batch_dir, batch_id)
-    batch_logger.setup()
+    batch_logger.setup(buffered=not verbose)
     batch_logger.info(
         f"Resuming {batch_id}: {n_remaining} tasks remaining "
         f"(resume #{resume_count + 1})"
@@ -1266,6 +1266,7 @@ def load_benchmark(batch_id: Optional[str] = None,
 
         if not verbose:
             print()
+            batch_logger.flush_warning_buffer()
 
     # ── Parallel path ──────────────────────────────────────────────────────────
     else:
@@ -1320,6 +1321,7 @@ def load_benchmark(batch_id: Optional[str] = None,
 
         if not verbose:
             print()
+            batch_logger.flush_warning_buffer()
 
         if _cancel_flag.is_set():
             _cancelled = True

@@ -4,6 +4,16 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-18 — ATOM wrapper bug fixes + warning/progress bar display fix**
+
+- **ATOM index formula bug (critical):** The wrapper inferred ATOM's internal `topo_column` from the output as `max_y + 1`. ATOM always calls `expanding_border()` one final time after the last successful pass, which shifts all coordinates by +1 and adds 2 to `topo_column`, leaving an empty outer border. This meant `max_y_in_output = topo_column_internal - 2`, so the wrapper's column count was always 1 short. Every qubit at row > 0 received a wrong linear index (`x * wrong_ncols * 8 + ...`), while row-0 qubits were unaffected (multiplied by 0). Fix: use `target_graph.graph['columns']` (stored by dwave_networkx) as the column count, with a fallback of `round(sqrt(n_nodes / 8))` for non-dwave graphs. This explains why K4 (fits in 1 row) always succeeded while anything needing multiple rows failed with `INVALID_OUTPUT`.
+- **ATOM bounds check:** ATOM grows its own Chimera dynamically and sometimes produces an embedding that exceeds the target's dimensions. Previously this generated wrong qubit indices that mapped to valid-but-disconnected qubits, causing `INVALID_OUTPUT` (false success). Now the wrapper checks all `(x, y)` coordinates against `target_graph.graph['rows']` and `['columns']` before conversion, returning clean `FAILURE` with a descriptive message (`"ATOM's embedding requires a 6×3 Chimera but target is 4×4"`) when bounds are exceeded. Correctly reflects that ATOM simply couldn't embed within the given target size.
+- **Warning/progress bar interleaving fix:** In non-verbose mode, `BatchLogger` was writing `WARNING` messages to `sys.stderr` immediately, interleaving with the `\r`-based progress bar on `sys.stdout`. Fix: `BatchLogger.setup(buffered=True)` now attaches a `_ListHandler` (new list-based `logging.Handler` subclass) instead of a `StreamHandler`. `flush_warning_buffer()` prints all buffered warnings after the progress bar's final newline. Both `run_full_benchmark()` and `load_benchmark()` call `setup(buffered=not verbose)` and `flush_warning_buffer()` after each path's progress bar ends. Verbose mode is unchanged.
+- **Validation error messages updated:** `INVALID_OUTPUT` error messages no longer say `"Algorithm claimed success=<absent>"` (misleading since the contract forbids returning `success`). Now say `"returned embedding (size=N)"` for non-empty embeddings and `"returned empty embedding"` for empty ones, making false-success vs. format-error cases visually distinct. Two tests updated to match.
+- 215/215 tests pass.
+
+---
+
 **2026-03-17 — `compute_graph_properties.py` standalone script**
 
 - **`compute_graph_properties.py`** (project root) — standalone script that scans all (or a selection of) graphs in `test_graphs/`, computes 25 structural properties for each, and writes them back into each JSON file under a top-level `"properties"` key in-place. Importable as a function or run as a CLI script.
