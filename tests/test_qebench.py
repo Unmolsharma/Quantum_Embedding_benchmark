@@ -2473,3 +2473,354 @@ class TestDeleteBenchmark:
         )
         captured = capsys.readouterr()
         assert "my test run" in captured.out
+
+
+# =============================================================================
+# Topology compatibility (_algo_topo_compatible)
+# =============================================================================
+
+class TestAlgoTopoCompatibility:
+    """Tests for _algo_topo_compatible() and supported_topologies attribute."""
+
+    def test_unrestricted_algo_compatible_with_any_topo(self):
+        """An algorithm with supported_topologies=None accepts any topology."""
+        from qebench.benchmark import _algo_topo_compatible
+        # minorminer has no restriction
+        assert _algo_topo_compatible("minorminer", "chimera_4x4x4") is True
+        assert _algo_topo_compatible("minorminer", "pegasus_16") is True
+        assert _algo_topo_compatible("minorminer", "zephyr_3") is True
+
+    def test_chimera_only_algo_rejects_pegasus(self):
+        """AtomAlgorithm (supported_topologies=['chimera']) rejects pegasus."""
+        from qebench.benchmark import _algo_topo_compatible
+        assert _algo_topo_compatible("atom", "pegasus_16") is False
+
+    def test_chimera_only_algo_accepts_chimera(self):
+        """AtomAlgorithm accepts chimera topology names."""
+        from qebench.benchmark import _algo_topo_compatible
+        assert _algo_topo_compatible("atom", "chimera_4x4x4") is True
+        assert _algo_topo_compatible("atom", "chimera_16x16x4") is True
+
+    def test_prefix_matching_case_insensitive(self):
+        """Prefix matching is case-insensitive."""
+        from qebench.benchmark import _algo_topo_compatible
+        assert _algo_topo_compatible("atom", "Chimera_4x4x4") is True
+        assert _algo_topo_compatible("atom", "CHIMERA_16") is True
+
+    def test_unknown_algo_returns_true(self):
+        """Unknown algorithm name returns True — let it fail naturally."""
+        from qebench.benchmark import _algo_topo_compatible
+        assert _algo_topo_compatible("nonexistent_algo_xyz", "chimera_4x4x4") is True
+        assert _algo_topo_compatible("nonexistent_algo_xyz", "pegasus_16") is True
+
+    def test_supported_topologies_attribute_on_atom(self):
+        """AtomAlgorithm.supported_topologies is ['chimera']."""
+        from qebench.registry import ALGORITHM_REGISTRY
+        atom = ALGORITHM_REGISTRY.get("atom")
+        assert atom is not None
+        assert atom.supported_topologies == ["chimera"]
+
+    def test_incompatible_pair_excluded_from_results(self, tmp_path):
+        """Atom × pegasus_4 produces no results; minorminer × pegasus_4 does."""
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(results_dir=str(tmp_path))
+        bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer", "atom"],
+            topologies=["pegasus_4"],
+            n_trials=1,
+        )
+        algo_names = {r.algorithm for r in bench.results}
+        assert "minorminer" in algo_names
+        assert "atom" not in algo_names
+
+
+# =============================================================================
+# simulate_faults() — standalone + integration
+# =============================================================================
+
+class TestSimulateFaults:
+    """Tests for qebench.faults.simulate_faults() and fault simulation integration."""
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _small_chimera():
+        """Chimera(2) — 32 nodes, deterministic."""
+        import dwave_networkx as dnx
+        return dnx.chimera_graph(2)
+
+    # ── Standalone: random mode ───────────────────────────────────────────────
+
+    def test_random_mode_correct_node_count(self):
+        """fault_rate=0.1 removes exactly int(N*0.1) nodes."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        n = len(topo)
+        faulted = simulate_faults(topo, fault_rate=0.1, fault_seed=0)
+        assert len(faulted) == n - int(n * 0.1)
+
+    def test_random_mode_reproducible(self):
+        """Same fault_rate + fault_seed → identical faulted topology."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        f1 = simulate_faults(topo, fault_rate=0.1, fault_seed=7)
+        f2 = simulate_faults(topo, fault_rate=0.1, fault_seed=7)
+        assert set(f1.nodes()) == set(f2.nodes())
+        assert set(f1.edges()) == set(f2.edges())
+
+    def test_random_mode_different_seeds_differ(self):
+        """Different seeds should (almost certainly) produce different results."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        f1 = simulate_faults(topo, fault_rate=0.25, fault_seed=1)
+        f2 = simulate_faults(topo, fault_rate=0.25, fault_seed=2)
+        assert set(f1.nodes()) != set(f2.nodes())
+
+    def test_random_mode_returns_copy(self):
+        """simulate_faults returns a new graph, not a view of the original."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        faulted = simulate_faults(topo, fault_rate=0.1, fault_seed=0)
+        assert faulted is not topo
+        # Mutating faulted does not affect original
+        node = list(faulted.nodes())[0]
+        faulted.remove_node(node)
+        assert node in topo
+
+    # ── Standalone: explicit node removal ────────────────────────────────────
+
+    def test_explicit_node_removal(self):
+        """faulty_nodes=[n] removes that node and all incident edges."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        target_node = list(topo.nodes())[0]
+        incident = list(topo.neighbors(target_node))
+        faulted = simulate_faults(topo, faulty_nodes=[target_node])
+        assert target_node not in faulted
+        # Incident edges removed with node; neighbor nodes still present
+        for nb in incident:
+            assert nb in faulted
+
+    def test_explicit_coupler_removal_keeps_endpoints(self):
+        """faulty_couplers=[(u,v)] removes edge but keeps both endpoint nodes."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        u, v = list(topo.edges())[0]
+        faulted = simulate_faults(topo, faulty_couplers=[(u, v)])
+        assert u in faulted
+        assert v in faulted
+        assert not faulted.has_edge(u, v)
+
+    def test_explicit_coupler_isolated_node_cleanup(self):
+        """Nodes that become isolated after coupler removal are cleaned up."""
+        from qebench import simulate_faults
+        # Build a small graph where node 1 has degree 1 (connected only to 0)
+        G = nx.path_graph(3)  # 0-1-2
+        # Remove edge (0,1) — node 0 becomes isolated (degree 0); node 2 still connected to 1
+        faulted = simulate_faults(G, faulty_couplers=[(0, 1)])
+        assert 0 not in faulted  # isolated, cleaned up
+        assert 1 in faulted      # still connected to 2
+        assert 2 in faulted
+
+    def test_no_faults_returns_copy(self):
+        """All defaults → returns a copy of topology unchanged."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        result = simulate_faults(topo)
+        assert result is not topo
+        assert set(result.nodes()) == set(topo.nodes())
+        assert set(result.edges()) == set(topo.edges())
+
+    def test_fault_rate_zero_with_explicit_nodes_allowed(self):
+        """fault_rate=0.0 alongside faulty_nodes is allowed (zero = no random faults)."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        target_node = list(topo.nodes())[0]
+        # Should not raise
+        faulted = simulate_faults(topo, fault_rate=0.0, faulty_nodes=[target_node])
+        assert target_node not in faulted
+
+    # ── Standalone: validation errors ────────────────────────────────────────
+
+    def test_fault_rate_above_one_raises(self):
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        with pytest.raises(ValueError, match="fault_rate"):
+            simulate_faults(topo, fault_rate=1.5)
+
+    def test_fault_rate_negative_raises(self):
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        with pytest.raises(ValueError, match="fault_rate"):
+            simulate_faults(topo, fault_rate=-0.1)
+
+    def test_conflicting_modes_raises(self):
+        """fault_rate > 0 combined with faulty_nodes raises ValueError."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        target_node = list(topo.nodes())[0]
+        with pytest.raises(ValueError):
+            simulate_faults(topo, fault_rate=0.1, faulty_nodes=[target_node])
+
+    def test_unknown_node_in_faulty_nodes_raises(self):
+        """Nonexistent node in faulty_nodes raises ValueError naming the node."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        with pytest.raises(ValueError, match="99999"):
+            simulate_faults(topo, faulty_nodes=[99999])
+
+    def test_unknown_node_in_faulty_couplers_raises(self):
+        """Coupler referencing a nonexistent node raises ValueError."""
+        from qebench import simulate_faults
+        topo = self._small_chimera()
+        real_node = list(topo.nodes())[0]
+        with pytest.raises(ValueError):
+            simulate_faults(topo, faulty_couplers=[(real_node, 99999)])
+
+    def test_nonexistent_edge_in_faulty_couplers_raises(self):
+        """Coupler where both nodes exist but edge does not raises ValueError."""
+        from qebench import simulate_faults
+        # Build a graph with two disconnected edges: 0-1 and 2-3
+        G = nx.Graph()
+        G.add_edges_from([(0, 1), (2, 3)])
+        # (0, 2) — both nodes exist but edge doesn't
+        with pytest.raises(ValueError):
+            simulate_faults(G, faulty_couplers=[(0, 2)])
+
+    # ── Integration: run_full_benchmark ──────────────────────────────────────
+
+    def test_scalar_fault_rate_applied_to_topology(self, tmp_path, chimera):
+        """Scalar fault_rate removes nodes before embedding; run completes."""
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            n_trials=1,
+            topology_name="chimera_4x4x4",
+            fault_rate=0.05,
+            fault_seed=42,
+        )
+        assert batch_dir is not None
+        assert len(bench.results) >= 1
+
+    def test_fault_seed_defaults_to_run_seed(self, tmp_path, chimera):
+        """When fault_seed is not specified, it defaults to the run seed."""
+        import json
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        run_seed = 77
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            n_trials=1,
+            topology_name="chimera_4x4x4",
+            fault_rate=0.05,
+            seed=run_seed,
+            # fault_seed intentionally omitted
+        )
+        assert batch_dir is not None
+        config = json.loads((batch_dir / "config.json").read_text())
+        fault_info = config["fault_simulation"]["chimera_4x4x4"]
+        assert fault_info["fault_seed"] == run_seed
+
+    def test_explicit_fault_seed_overrides_run_seed(self, tmp_path, chimera):
+        """An explicit fault_seed takes precedence over the run seed."""
+        import json
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            n_trials=1,
+            topology_name="chimera_4x4x4",
+            fault_rate=0.05,
+            seed=77,
+            fault_seed=999,
+        )
+        assert batch_dir is not None
+        config = json.loads((batch_dir / "config.json").read_text())
+        fault_info = config["fault_simulation"]["chimera_4x4x4"]
+        assert fault_info["fault_seed"] == 999
+
+    def test_dict_fault_rate_per_topology(self, tmp_path):
+        """Dict fault_rate applies different rates to different topologies."""
+        import json
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(results_dir=str(tmp_path))
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            topologies=["chimera_4x4x4", "pegasus_4"],
+            n_trials=1,
+            fault_rate={"chimera_4x4x4": 0.05, "pegasus_4": 0.0},
+            fault_seed=42,
+        )
+        assert batch_dir is not None
+        config = json.loads((batch_dir / "config.json").read_text())
+        # chimera should have fault info; pegasus should be None (no faults)
+        assert config["fault_simulation"]["chimera_4x4x4"] is not None
+        assert config["fault_simulation"]["pegasus_4"] is None
+
+    def test_flat_faulty_nodes_raises_for_multi_topo(self, tmp_path):
+        """Flat faulty_nodes collection raises ValueError for multi-topology runs."""
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(results_dir=str(tmp_path))
+        with pytest.raises(ValueError, match="dict"):
+            bench.run_full_benchmark(
+                graph_selection="1",
+                methods=["minorminer"],
+                topologies=["chimera_4x4x4", "pegasus_4"],
+                n_trials=1,
+                faulty_nodes=[0, 1],
+            )
+
+    def test_per_topology_mutual_exclusion_raises(self, tmp_path, chimera):
+        """fault_rate > 0 and faulty_nodes for same topology raises ValueError."""
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        with pytest.raises(ValueError, match="chimera_4x4x4"):
+            bench.run_full_benchmark(
+                graph_selection="1",
+                methods=["minorminer"],
+                n_trials=1,
+                topology_name="chimera_4x4x4",
+                fault_rate={"chimera_4x4x4": 0.05},
+                faulty_nodes={"chimera_4x4x4": [0]},
+            )
+
+    def test_null_fault_config_when_no_faults(self, tmp_path, chimera):
+        """fault_simulation is null in config.json when no faults specified."""
+        import json
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            n_trials=1,
+            topology_name="chimera_4x4x4",
+        )
+        assert batch_dir is not None
+        config = json.loads((batch_dir / "config.json").read_text())
+        assert config["fault_simulation"] is None
+
+    def test_config_records_removed_node_count(self, tmp_path, chimera):
+        """Config faulty_nodes list matches the actual number of removed nodes."""
+        import json
+        from qebench import EmbeddingBenchmark
+        bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
+        fr = 0.05
+        batch_dir = bench.run_full_benchmark(
+            graph_selection="1",
+            methods=["minorminer"],
+            n_trials=1,
+            topology_name="chimera_4x4x4",
+            fault_rate=fr,
+            fault_seed=42,
+        )
+        assert batch_dir is not None
+        config = json.loads((batch_dir / "config.json").read_text())
+        fault_info = config["fault_simulation"]["chimera_4x4x4"]
+        expected_removed = int(len(chimera) * fr)
+        assert len(fault_info["faulty_nodes"]) == expected_removed

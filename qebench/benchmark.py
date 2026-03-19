@@ -34,6 +34,7 @@ warnings.filterwarnings('ignore')
 
 from qebench.registry import ALGORITHM_REGISTRY
 from qebench.validation import validate_layer1, validate_layer2
+from qebench.faults import simulate_faults
 from qebench.graphs import load_test_graphs as _load_test_graphs
 from qebench.results import ResultsManager
 from qebench.topologies import get_topology
@@ -423,6 +424,8 @@ def _print_warn_summary(warn_registry: dict, log_dir: Path) -> None:
         total += sum(warn_registry['TIMING_OUTLIER'].values())
     if 'ALL_ALGORITHMS_FAILED' in warn_registry:
         total += len(warn_registry['ALL_ALGORITHMS_FAILED'])
+    if 'TOPOLOGY_DISCONNECTED' in warn_registry:
+        total += len(warn_registry['TOPOLOGY_DISCONNECTED'])
     if total == 0:
         return
 
@@ -466,6 +469,12 @@ def _print_warn_summary(warn_registry: dict, log_dir: Path) -> None:
         ellipsis = '...' if len(failed) > 5 else ''
         print(f"   ALL_ALGORITHMS_FAILED  {len(failed)} problem(s) had no successful embedding.")
         print(f"                          {shown}{ellipsis}")
+
+    if 'TOPOLOGY_DISCONNECTED' in warn_registry:
+        disc = warn_registry['TOPOLOGY_DISCONNECTED']
+        print(f"   TOPOLOGY_DISCONNECTED  Fault simulation produced a disconnected topology.")
+        for tn, n_comp in disc.items():
+            print(f"                          {tn}: {n_comp} connected components after fault removal.")
 
     print(f"\nFull warning details: {log_dir.resolve()}")
 
@@ -1013,7 +1022,11 @@ class EmbeddingBenchmark:
                           n_workers: int = 1,
                           verbose: bool = None,
                           output_dir: Optional[str] = None,
-                          cancel_delay: float = 5.0):
+                          cancel_delay: float = 5.0,
+                          fault_rate: float = 0.0,
+                          fault_seed: Optional[int] = None,
+                          faulty_nodes=None,
+                          faulty_couplers=None):
         """
         Run complete benchmark suite.
 
@@ -1040,6 +1053,17 @@ class EmbeddingBenchmark:
                         sibling to the runs_unfinished/ staging directory.
             cancel_delay: Seconds to drain results after cancel signal (parallel
                           mode only). Default 5.0.
+            fault_rate: Fraction of topology qubits to remove randomly before
+                        running. Must be in [0, 1]. Applied once per topology;
+                        all trials share the same faulted graph. Default 0.0
+                        (no faults).
+            fault_seed: Seed for random fault generation. Only used when
+                        fault_rate > 0.
+            faulty_nodes: Explicit list of qubit IDs to remove from the
+                          topology. Cannot be combined with fault_rate > 0.
+            faulty_couplers: Explicit list of (u, v) coupler pairs to remove.
+                             Isolated nodes left behind are cleaned up
+                             automatically. Cannot be combined with fault_rate > 0.
 
         Returns:
             Path to the completed batch directory (in output_dir) on success,
@@ -1065,6 +1089,109 @@ class EmbeddingBenchmark:
                 "No topology specified. Either pass target_graph to __init__ "
                 "or use topologies=['chimera_4x4x4', ...] in run_full_benchmark."
             )
+
+        # ── Fault simulation ───────────────────────────────────────────────────
+        # Applied once per topology before task list construction.
+        # All trials/algorithms share the same faulted topology.
+        # Each parameter accepts a scalar (applied to all topologies) or a dict
+        # keyed by topology name (per-topology control).
+        _fault_log: dict = {}           # topo_name -> per-topology fault info or None
+        _disconnected_topos: dict = {}  # topo_name -> n_components
+        topo_names = [tn for _, _, tn in topo_list]
+        n_topos = len(topo_names)
+
+        # Resolve fault_rate per topology (default 0.0)
+        if isinstance(fault_rate, dict):
+            _fr = {t: float(fault_rate.get(t, 0.0)) for t in topo_names}
+        else:
+            _fr = {t: float(fault_rate) for t in topo_names}
+
+        # Resolve fault_seed per topology (default to run master seed)
+        if isinstance(fault_seed, dict):
+            _fs = {t: fault_seed.get(t, seed) for t in topo_names}
+        elif fault_seed is not None:
+            _fs = {t: fault_seed for t in topo_names}
+        else:
+            _fs = {t: seed for t in topo_names}
+
+        # Resolve faulty_nodes per topology — flat collection only for single-topo runs
+        if isinstance(faulty_nodes, dict):
+            _fn = {t: list(faulty_nodes.get(t, [])) for t in topo_names}
+        elif faulty_nodes:
+            if n_topos > 1:
+                raise ValueError(
+                    "faulty_nodes must be a dict keyed by topology name for "
+                    "multi-topology runs. Expected format:\n"
+                    f"  faulty_nodes={{ {', '.join(repr(t)+': [...]' for t in topo_names)} }}"
+                )
+            _fn = {topo_names[0]: list(faulty_nodes)}
+        else:
+            _fn = {t: [] for t in topo_names}
+
+        # Resolve faulty_couplers per topology — flat collection only for single-topo runs
+        if isinstance(faulty_couplers, dict):
+            _fc = {t: list(faulty_couplers.get(t, [])) for t in topo_names}
+        elif faulty_couplers:
+            if n_topos > 1:
+                raise ValueError(
+                    "faulty_couplers must be a dict keyed by topology name for "
+                    "multi-topology runs. Expected format:\n"
+                    f"  faulty_couplers={{ {', '.join(repr(t)+': [...]' for t in topo_names)} }}"
+                )
+            _fc = {topo_names[0]: list(faulty_couplers)}
+        else:
+            _fc = {t: [] for t in topo_names}
+
+        # Per-topology mutual exclusion check — before any runs start
+        for tn in topo_names:
+            if _fr[tn] > 0 and (_fn[tn] or _fc[tn]):
+                raise ValueError(
+                    f"Topology '{tn}': cannot combine fault_rate with "
+                    f"faulty_nodes/faulty_couplers. Use one mode at a time."
+                )
+
+        _any_faults = any(_fr[t] > 0 or _fn[t] or _fc[t] for t in topo_names)
+
+        if _any_faults:
+            faulted_topo_list = []
+            for label, tg, topo_name in topo_list:
+                fr, fs = _fr[topo_name], _fs[topo_name]
+                fn, fc = _fn[topo_name], _fc[topo_name]
+
+                if not (fr > 0 or fn or fc):
+                    _fault_log[topo_name] = None
+                    faulted_topo_list.append((label, tg, topo_name))
+                    continue
+
+                _topo_mode = 'random' if fr > 0 else 'explicit'
+                faulted = simulate_faults(
+                    tg,
+                    fault_rate=fr,
+                    fault_seed=fs,
+                    faulty_nodes=fn or None,
+                    faulty_couplers=fc or None,
+                )
+                faulted_node_set = set(faulted.nodes())
+                removed_nodes = sorted(set(tg.nodes()) - faulted_node_set)
+                removed_couplers = sorted(
+                    [list(e) for e in tg.edges()
+                     if e[0] in faulted_node_set and e[1] in faulted_node_set
+                     and not faulted.has_edge(*e)]
+                ) if _topo_mode == 'explicit' else []
+                _fault_log[topo_name] = {
+                    'mode': _topo_mode,
+                    'fault_rate': fr if _topo_mode == 'random' else None,
+                    'fault_seed': fs if _topo_mode == 'random' else None,
+                    'faulty_nodes': removed_nodes,
+                    'faulty_couplers': removed_couplers,
+                }
+                if not nx.is_connected(faulted):
+                    n_comp = nx.number_connected_components(faulted)
+                    _disconnected_topos[topo_name] = n_comp
+                    print(f"⚠️  Fault simulation produced a disconnected topology: "
+                          f"{topo_name} ({n_comp} connected components).")
+                faulted_topo_list.append((label, faulted, topo_name))
+            topo_list = faulted_topo_list
 
         # Resolve problems
         if problems is None:
@@ -1139,6 +1266,8 @@ class EmbeddingBenchmark:
         if batch_note:
             config['batch_note'] = batch_note
 
+        config['fault_simulation'] = _fault_log if _any_faults else None
+
         batch_dir = self.results_manager.create_batch(config, batch_note=batch_note)
         batch_id = batch_dir.name
 
@@ -1151,13 +1280,15 @@ class EmbeddingBenchmark:
             f"Batch {batch_id} starting: {total_measured} planned runs, n_workers={n_workers}"
         )
 
-        # Warning registry — TOPOLOGY_INCOMPATIBLE populated pre-run (above).
+        # Warning registry — pre-run entries populated here.
         _warn_registry: dict = {}
         if _topo_incompat_entries:
             _warn_registry['TOPOLOGY_INCOMPATIBLE'] = {
                 'entries': _topo_incompat_entries,
                 'total_skipped': sum(n for _, _, n in _topo_incompat_entries),
             }
+        if _disconnected_topos:
+            _warn_registry['TOPOLOGY_DISCONNECTED'] = _disconnected_topos
 
         # Build flat task list — 7-element tuple (timeout excluded, passed uniformly).
         all_tasks = []

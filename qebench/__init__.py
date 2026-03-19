@@ -19,6 +19,9 @@ from qebench.benchmark import (
     delete_benchmark,
 )
 
+# Fault simulation
+from qebench.faults import simulate_faults
+
 # Results storage
 from qebench.results import ResultsManager
 
@@ -76,6 +79,8 @@ __all__ = [
     "list_presets",
     "generate_manifest",
     "verify_manifest",
+    # Fault simulation
+    "simulate_faults",
     # Topologies
     "TOPOLOGY_REGISTRY",
     "TopologyConfig",

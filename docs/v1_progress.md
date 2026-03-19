@@ -4,6 +4,29 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-19 — Faulty qubit simulation**
+
+- **`qebench/faults.py`** — new standalone module. Single public function `simulate_faults(topology, fault_rate, fault_seed, faulty_nodes, faulty_couplers) -> nx.Graph`. Mode inferred from arguments: random (`fault_rate > 0`), explicit (`faulty_nodes`/`faulty_couplers`), or no-op (all defaults). Returns a copy, never a view.
+- **Random mode:** `rng = random.Random(fault_seed)` → removes `int(N * fault_rate)` randomly selected nodes and all incident edges. Deterministic given the same seed.
+- **Explicit mode:** `remove_nodes_from` → `remove_edges_from` → isolated-node cleanup. Nodes that become isolated after coupler removal are automatically removed.
+- **Validation (all pre-modification):**
+  - `fault_rate` outside `[0.0, 1.0]` → `ValueError`
+  - `fault_rate > 0` combined with non-empty `faulty_nodes`/`faulty_couplers` → `ValueError`
+  - Any node in `faulty_nodes` absent from topology → `ValueError` (lists offending IDs)
+  - Any coupler in `faulty_couplers` referencing a nonexistent node → `ValueError`
+  - Any coupler in `faulty_couplers` where both endpoint nodes exist but the edge does not → `ValueError`
+  - `fault_rate=0.0` alongside non-empty `faulty_nodes`/`faulty_couplers` is allowed — zero rate is treated as no random faults.
+- **Integration with `run_full_benchmark()`:** four new parameters added — `fault_rate`, `fault_seed`, `faulty_nodes`, `faulty_couplers`. Each accepts a scalar (applied to all topologies) or a dict keyed by topology name (per-topology control). Flat collections (`faulty_nodes=[...]`, `faulty_couplers=[...]`) raise `ValueError` for multi-topology runs with a helpful example of the expected dict format. Per-topology mutual exclusion checked before any runs start, naming the topology in the error message.
+- **`fault_seed` defaults to run `seed`:** when `fault_seed` is not specified, each topology's fault seed resolves to the run master seed. An explicit `fault_seed` (scalar or per-topology dict) overrides this.
+- **Config logging:** `fault_simulation` key written to `config.json`. Per-topology entry records `mode`, `fault_rate`, `fault_seed`, `faulty_nodes` (exact removed node list), and `faulty_couplers` (exact removed coupler list), so the precise faulted topology can be reconstructed without re-running. `fault_simulation` is `null` when no faults are active. Isolated nodes removed during cleanup are included in the logged `faulty_nodes` list.
+- **`TOPOLOGY_DISCONNECTED` warning:** after fault simulation, connectivity is checked. If a topology becomes disconnected, `TOPOLOGY_DISCONNECTED` is added to the run-level warning registry and printed in the end-of-run summary block (`_print_warn_summary`) with component count per topology.
+- **`simulate_faults` exported** from `qebench.__init__` and listed in `__all__`.
+- *Note: Random fault simulation is a uniform approximation for stress testing. For physically accurate simulation, pass calibration data from your hardware instance directly as `faulty_nodes` and `faulty_couplers`.*
+- **TODO:** The `topologies` parameter in `run_full_benchmark()` currently only accepts registered topology name strings (looked up via `get_topology()`). Custom graph objects can only be used for single-topology runs via `EmbeddingBenchmark(target_graph=my_graph)`. Extend `topologies` to also accept `(name, graph)` tuples so that custom/unregistered graphs can be used in multi-topology runs.
+- 245/245 tests pass.
+
+---
+
 **2026-03-18 — `_execute_tasks()` refactor + cancel/stdin fixes**
 
 - **`_execute_tasks()` module-level function:** extracted the entire run loop (sequential + parallel paths, progress reporting, JSONL writing, warning accumulation, cancel handling) into a single shared function called by both `run_full_benchmark()` and `load_benchmark()`. Neither function duplicates run loop logic.
