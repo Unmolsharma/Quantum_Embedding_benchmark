@@ -4,6 +4,25 @@ Reverse-chronological. One entry per session or logical unit of work.
 
 ---
 
+**2026-03-18 — `_execute_tasks()` refactor + cancel/stdin fixes**
+
+- **`_execute_tasks()` module-level function:** extracted the entire run loop (sequential + parallel paths, progress reporting, JSONL writing, warning accumulation, cancel handling) into a single shared function called by both `run_full_benchmark()` and `load_benchmark()`. Neither function duplicates run loop logic.
+- **`ExecutionResult` dataclass:** return type of `_execute_tasks`. Carries `warning_registry`, `unfinished_tasks`, `session_elapsed`, `completed_count`, `cancelled`.
+- **`_load_results_from_jsonl(workers_dir)`:** shared helper — reads all `worker_*.jsonl` files and reconstructs `EmbeddingResult` objects.
+- **`_compute_postrun_warnings(results)`:** shared helper — computes `TIMING_OUTLIER` and `ALL_ALGORITHMS_FAILED` from a completed result list. Called by both callers after `_execute_tasks` returns.
+- **Task tuple format:** changed from 8-element `(src, tgt, algo, timeout, prob, topo, trial, seed)` to 7-element `(src, tgt, algo, prob, topo, trial, seed)`. `timeout` removed from tuple — passed as a uniform top-level argument to `_execute_tasks` and `_worker_process`.
+- **Warmup moved to caller:** `run_full_benchmark` runs warmup trials before calling `_execute_tasks`; `_execute_tasks` receives measured tasks only.
+- **Transition detection for topo/problem headers:** sequential path inside `_execute_tasks` detects when `topo_name` or `problem_name` changes between consecutive tasks and prints section headers inline (no nested loop needed).
+- **`cancel_trigger: Optional[Callable]`:** included in `_execute_tasks` signature. Polled between trials/results alongside the keypress flag.
+- **`elapsed_offset`:** `load_benchmark` passes `config.get('batch_wall_time', 0.0)` so the progress bar shows cumulative time across all sessions, not just the current one.
+- **`run_full_benchmark` returns `None` on cancel** (previously returned the staging `batch_dir`). Callers that do `if direc:` before analysis now correctly skip analysis on cancel without crashing `BenchmarkAnalysis` on an incomplete directory.
+- **Terminal stdin fix — `cancel_join_thread()`:** when workers are `terminate()`d mid-operation, Python's `multiprocessing.Queue` cleanup would hang at exit trying to join feeder threads stuck waiting for killed workers to drain pipes. Fixed by calling `task_queue.cancel_join_thread()` and `result_queue.cancel_join_thread()` immediately after worker termination. This was the root cause of the terminal appearing frozen after every parallel cancel.
+- **Keypress listener uses `select` with timeout:** `_keypress_cancel_listener` now uses `select.select([sys.stdin], [], [], 0.5)` instead of a blocking `readline()`, so the thread exits promptly (within 0.5s) when `_cancel_flag` is set at the end of `_execute_tasks`.
+- **Worker stdin detached:** each `_worker_process` redirects fd 0 to `/dev/null` via `os.dup2` at startup, preventing spawned workers from holding the parent's TTY file descriptor.
+- 215/215 tests pass.
+
+---
+
 **2026-03-18 — Topology compatibility + run-level warning registry**
 
 - **`supported_topologies` class attribute on `EmbeddingAlgorithm`:** Optional `List[str]` (default `None` = all topologies). Set to `['chimera']` on `AtomAlgorithm`. Matching is prefix-based — `'chimera'` matches `chimera_4x4x4`, `chimera_16x16x4`, etc.

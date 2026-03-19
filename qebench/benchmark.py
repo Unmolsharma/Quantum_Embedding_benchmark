@@ -13,6 +13,7 @@ import hashlib
 import multiprocessing
 import os
 import queue
+import select
 import statistics
 import sys
 import threading
@@ -373,16 +374,18 @@ def _derive_seed(root_seed: int, algorithm: str, problem_name: str,
 def _keypress_cancel_listener(cancel_flag: threading.Event) -> None:
     """Background thread: set cancel_flag when user presses 'q' + Enter.
 
-    Reads stdin line by line. Daemon thread — exits automatically when the
-    main process exits. Only started when stdin is a real TTY so it does not
-    block indefinitely when running in a script or CI pipeline.
+    Polls stdin with a 0.5s timeout so it checks cancel_flag between reads
+    and exits promptly when the run completes (caller sets cancel_flag).
+    Only started when stdin is a real TTY.
     """
     try:
         while not cancel_flag.is_set():
-            line = sys.stdin.readline()
-            if line.strip().lower() == 'q':
-                cancel_flag.set()
-                break
+            ready, _, _ = select.select([sys.stdin], [], [], 0.5)
+            if ready:
+                line = sys.stdin.readline()
+                if line.strip().lower() == 'q':
+                    cancel_flag.set()
+                    break
     except Exception:
         pass
 
@@ -467,6 +470,86 @@ def _print_warn_summary(warn_registry: dict, log_dir: Path) -> None:
     print(f"\nFull warning details: {log_dir.resolve()}")
 
 
+@dataclass
+class ExecutionResult:
+    """Return value from _execute_tasks().
+
+    The caller uses this to write checkpoints, accumulate wall time,
+    and print the end-of-run warning summary.
+    """
+    warning_registry: dict
+    unfinished_tasks: list    # empty on clean completion
+    session_elapsed: float    # wall time for this session only
+    completed_count: int
+    cancelled: bool
+
+
+def _load_results_from_jsonl(workers_dir: Path) -> List[EmbeddingResult]:
+    """Reconstruct EmbeddingResult objects from all worker JSONL files.
+
+    Called after _execute_tasks() returns — workers are terminated by then,
+    so JSONL files are stable. Works for both sequential (single worker file)
+    and parallel (multiple worker files) paths.
+    """
+    valid_fields = set(EmbeddingResult.__dataclass_fields__.keys())
+    results: List[EmbeddingResult] = []
+    for jf in sorted(workers_dir.glob("worker_*.jsonl")):
+        with open(jf) as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    rec = json.loads(line)
+                    results.append(
+                        EmbeddingResult(**{k: v for k, v in rec.items()
+                                          if k in valid_fields})
+                    )
+    return results
+
+
+def _compute_postrun_warnings(results: List[EmbeddingResult]) -> dict:
+    """Compute TIMING_OUTLIER and ALL_ALGORITHMS_FAILED from a completed result list.
+
+    Called by both run_full_benchmark and load_benchmark after reading results
+    from JSONL. Returns a partial warning registry dict to be merged into the
+    registry returned by _execute_tasks().
+    """
+    warn_additions: dict = {}
+
+    # TIMING_OUTLIER: (algo, topo) pairs with any trial > 10× median wall time
+    _times_by_key: dict = {}
+    for r in results:
+        if r.success:
+            _times_by_key.setdefault((r.algorithm, r.topology_name), []).append(r.wall_time)
+    _outlier_counts: dict = {}
+    for (algo, topo), times in _times_by_key.items():
+        if len(times) >= 2:
+            med = statistics.median(times)
+            n_out = sum(1 for t in times if t > 10 * med)
+            if n_out:
+                _outlier_counts[(algo, topo)] = n_out
+    if _outlier_counts:
+        warn_additions['TIMING_OUTLIER'] = _outlier_counts
+
+    # ALL_ALGORITHMS_FAILED: (problem, topo) pairs with no successful embedding
+    _prob_topo_seen: set = set()
+    _prob_topo_success: set = set()
+    for r in results:
+        _prob_topo_seen.add((r.problem_name, r.topology_name))
+        if r.success:
+            _prob_topo_success.add((r.problem_name, r.topology_name))
+    _all_failed = sorted(
+        (p, t) for (p, t) in _prob_topo_seen if (p, t) not in _prob_topo_success
+    )
+    if _all_failed:
+        _n_topos = len(set(t for _, t in _prob_topo_seen))
+        if _n_topos > 1:
+            warn_additions['ALL_ALGORITHMS_FAILED'] = [f"{p} [{t}]" for p, t in _all_failed]
+        else:
+            warn_additions['ALL_ALGORITHMS_FAILED'] = [p for p, _ in _all_failed]
+
+    return warn_additions
+
+
 def _strip_truncated_jsonl(filepath: Path) -> None:
     """Remove a potentially truncated last line from a worker JSONL file.
 
@@ -493,28 +576,299 @@ def _strip_truncated_jsonl(filepath: Path) -> None:
             filepath.write_bytes(content[:last_newline + 1])
 
 
+def _execute_tasks(
+    tasks: list,
+    batch_dir: Path,
+    batch_logger: 'BatchLogger',
+    n_workers: int,
+    verbose: bool,
+    timeout: float,
+    cancel_trigger=None,
+    elapsed_offset: float = 0.0,
+    cancel_delay: float = 5.0,
+) -> ExecutionResult:
+    """Execute a flat list of measured tasks — the shared run loop for all paths.
+
+    Owns: sequential/parallel execution, progress reporting, warning aggregation,
+    JSONL writing, cancel handling, and worker lifecycle.
+
+    Does NOT own: batch directory creation, config.json writing, warmup trials,
+    topology compatibility checking, compile_batch, checkpoint writing, or
+    self.results population. Those belong to the caller.
+
+    Task tuple format: (source_graph, target_graph, algo_name, problem_name,
+                        topo_name, trial, trial_seed)
+    timeout is uniform across all tasks and passed as a top-level parameter.
+
+    Args:
+        tasks:          Flat list of fully-determined task tuples (measured only).
+        batch_dir:      Batch directory, already exists on disk.
+        batch_logger:   Already initialised by caller.
+        n_workers:      1 = sequential, >1 = parallel worker processes.
+        verbose:        True = per-trial output; False = progress bar.
+        timeout:        Seconds allowed per embed() call (uniform across tasks).
+        cancel_trigger: Optional callable() -> bool polled between trials.
+                        None = 'q' keypress listener only.
+        elapsed_offset: Accumulated wall time from previous sessions, added to
+                        progress bar display so resumed runs show total elapsed time.
+        cancel_delay:   Seconds to drain result queue after cancel (parallel only).
+
+    Returns:
+        ExecutionResult with warning_registry, unfinished_tasks, session_elapsed,
+        completed_count, and cancelled flag. Caller reads results from JSONL.
+    """
+    batch_id = batch_dir.name
+    workers_dir = batch_dir / "workers"
+    workers_dir.mkdir(exist_ok=True)
+
+    _warn_registry: dict = {}
+    _start = time.perf_counter()
+    _cancelled = False
+    n_tasks = len(tasks)
+
+    # Cancel detection — keypress listener or caller-supplied trigger
+    _cancel_flag = threading.Event()
+    if cancel_trigger is None and sys.stdin.isatty():
+        _cancel_listener = threading.Thread(
+            target=_keypress_cancel_listener, args=(_cancel_flag,), daemon=True
+        )
+        _cancel_listener.start()
+
+    def _is_cancelled() -> bool:
+        return _cancel_flag.is_set() or (cancel_trigger is not None and cancel_trigger())
+
+    # ── Sequential path (n_workers == 1) ───────────────────────────────────────
+    if n_workers == 1:
+        worker_file = workers_dir / f"worker_{os.getpid()}.jsonl"
+        done_count = 0
+        prev_topo: Optional[str] = None
+        prev_prob: Optional[str] = None
+
+        try:
+            for task in tasks:
+                if _is_cancelled():
+                    raise KeyboardInterrupt
+
+                source_graph, target_graph, algo_name, problem_name, topo_name, trial, trial_seed = task
+
+                # Transition detection: print topo/problem headers in verbose mode
+                if verbose:
+                    if topo_name != prev_topo:
+                        print(f"\n{'='*80}")
+                        print(f"Topology: {topo_name} ({target_graph.number_of_nodes()} qubits, "
+                              f"{target_graph.number_of_edges()} couplers)")
+                        print(f"{'='*80}")
+                        prev_topo = topo_name
+                        prev_prob = None
+                    if problem_name != prev_prob:
+                        print(f"\nProblem: {problem_name} "
+                              f"(n={source_graph.number_of_nodes()}, "
+                              f"e={source_graph.number_of_edges()})")
+                        prev_prob = problem_name
+                    print(f"  [{done_count+1}/{n_tasks}] Running {algo_name}...", end=" ")
+
+                log_path = batch_logger.run_log_path(algo_name, problem_name, trial, trial_seed)
+                _reseed_globals(trial_seed)
+                with capture_run(log_path):
+                    result = benchmark_one(
+                        source_graph, target_graph, algo_name,
+                        timeout=timeout, problem_name=problem_name,
+                        topology_name=topo_name, trial=trial, seed=trial_seed,
+                    )
+                batch_logger.append_footer(log_path, result)
+                batch_logger.log_run(result, trial_seed)
+
+                if result.status == 'INVALID_OUTPUT':
+                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                    _inv[result.algorithm] = _inv.get(result.algorithm, 0) + 1
+                elif result.status == 'CRASH':
+                    _cr = _warn_registry.setdefault('CRASH', {})
+                    if result.algorithm not in _cr:
+                        _cr[result.algorithm] = {'count': 0, 'first_error': result.error}
+                    _cr[result.algorithm]['count'] += 1
+
+                with open(worker_file, "a") as wf:
+                    rec = result.to_jsonl_dict()
+                    rec['seed'] = trial_seed
+                    rec['batch_id'] = batch_id
+                    wf.write(json.dumps(rec) + "\n")
+                done_count += 1  # advance only after JSONL write
+
+                if verbose:
+                    if result.success:
+                        valid_str = " ✓valid" if result.is_valid else " ✗invalid"
+                        print(f"✓ wall={result.wall_time:.3f}s "
+                              f"cpu={result.cpu_time:.3f}s, "
+                              f"avg_chain={result.avg_chain_length:.2f}, "
+                              f"qubits={result.total_qubits_used}{valid_str}")
+                    else:
+                        print(f"✗ Failed: {result.error}")
+                else:
+                    pct = int(40 * done_count / max(n_tasks, 1))
+                    bar = '#' * pct + '-' * (40 - pct)
+                    elapsed = elapsed_offset + (time.perf_counter() - _start)
+                    print(f"\r  [{bar}] {done_count}/{n_tasks}  "
+                          f"{elapsed:.0f}s elapsed", end="", flush=True)
+
+        except KeyboardInterrupt:
+            _cancel_flag.set()
+            _cancelled = True
+
+        if not verbose:
+            print()  # newline after progress bar
+
+        unfinished_tasks = list(tasks[done_count:])
+
+    # ── Parallel path (n_workers > 1) ──────────────────────────────────────────
+    else:
+        task_queue: multiprocessing.Queue = multiprocessing.Queue()
+        result_queue: multiprocessing.Queue = multiprocessing.Queue()
+
+        for task in tasks:
+            task_queue.put(task)
+        for _ in range(n_workers):
+            task_queue.put(None)  # one sentinel per worker
+
+        worker_procs = []
+        for _ in range(n_workers):
+            p = multiprocessing.Process(
+                target=_worker_process,
+                args=(task_queue, result_queue, str(workers_dir), batch_id,
+                      str(batch_logger.logs_runs_dir), timeout),
+            )
+            p.start()
+            worker_procs.append(p)
+
+        completed_display = 0
+        try:
+            while completed_display < n_tasks:
+                if _is_cancelled():
+                    break
+                try:
+                    display = result_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                completed_display += 1
+                batch_logger.log_run_from_display(display)
+
+                _dstatus = display.get('status', '')
+                if _dstatus == 'INVALID_OUTPUT':
+                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
+                    _dalgo = display['algorithm']
+                    _inv[_dalgo] = _inv.get(_dalgo, 0) + 1
+                elif _dstatus == 'CRASH':
+                    _cr = _warn_registry.setdefault('CRASH', {})
+                    _dalgo = display['algorithm']
+                    if _dalgo not in _cr:
+                        _cr[_dalgo] = {'count': 0, 'first_error': display.get('error')}
+                    _cr[_dalgo]['count'] += 1
+
+                if verbose:
+                    algo = display['algorithm']
+                    prob = display['problem_name']
+                    trial = display['trial']
+                    if display['success']:
+                        print(f"  [{completed_display}/{n_tasks}] {algo} / {prob} "
+                              f"trial {trial}: ✓ wall={display['wall_time']:.3f}s "
+                              f"avg_chain={display['avg_chain_length']:.2f}")
+                    else:
+                        print(f"  [{completed_display}/{n_tasks}] {algo} / {prob} "
+                              f"trial {trial}: ✗ {display['status']}")
+                else:
+                    pct = int(40 * completed_display / max(n_tasks, 1))
+                    bar = '#' * pct + '-' * (40 - pct)
+                    elapsed = elapsed_offset + (time.perf_counter() - _start)
+                    print(f"\r  [{completed_display}/{n_tasks}] [{bar}]  "
+                          f"{elapsed:.0f}s elapsed", end="", flush=True)
+        except KeyboardInterrupt:
+            _cancel_flag.set()
+
+        if not verbose:
+            print()
+
+        if _is_cancelled():
+            _cancelled = True
+            # Drain: collect results that arrived during/just after cancel signal
+            _drain_end = time.perf_counter() + cancel_delay
+            while time.perf_counter() < _drain_end:
+                try:
+                    display = result_queue.get(timeout=0.1)
+                    completed_display += 1
+                    batch_logger.log_run_from_display(display)
+                except queue.Empty:
+                    break
+            for p in worker_procs:
+                p.terminate()
+            for p in worker_procs:
+                p.join(timeout=10)
+            for p in worker_procs:
+                if p.is_alive():
+                    p.kill()
+                    p.join()
+            # Prevent Python from hanging at exit trying to flush queue pipes
+            # whose feeder threads are stuck because workers were killed.
+            task_queue.cancel_join_thread()
+            result_queue.cancel_join_thread()
+            for jf in workers_dir.glob("worker_*.jsonl"):
+                _strip_truncated_jsonl(jf)
+        else:
+            for p in worker_procs:
+                p.join()
+
+        # Derive unfinished from confirmed completions in JSONL
+        completed_seeds = completed_seeds_from_jsonl(batch_dir)
+        unfinished_tasks = [
+            t for t in tasks
+            if (t[2], t[3], t[4], t[6]) not in completed_seeds
+            # indices: (algo_name, problem_name, topo_name, trial_seed)
+        ]
+        done_count = n_tasks - len(unfinished_tasks)
+
+    # Signal the keypress listener to exit its poll loop (exits within 0.5s)
+    _cancel_flag.set()
+
+    session_elapsed = time.perf_counter() - _start
+    return ExecutionResult(
+        warning_registry=_warn_registry,
+        unfinished_tasks=unfinished_tasks,
+        session_elapsed=session_elapsed,
+        completed_count=done_count,
+        cancelled=_cancelled,
+    )
+
+
 def _worker_process(task_queue: multiprocessing.Queue,
                     result_queue: multiprocessing.Queue,
                     workers_dir_str: str,
                     batch_id: str,
-                    logs_runs_dir_str: str) -> None:
+                    logs_runs_dir_str: str,
+                    timeout: float) -> None:
     """Worker process: consume tasks, write JSONL, push display records.
 
-    Pulls (source_graph, target_graph, algo_name, timeout, problem_name,
-           topo_name, trial, trial_seed) tuples from task_queue until it
-    receives a None sentinel, then exits.
+    Pulls (source_graph, target_graph, algo_name, problem_name, topo_name,
+           trial, trial_seed) tuples from task_queue until it receives a
+    None sentinel, then exits. timeout is uniform across all tasks and
+    passed as a top-level argument rather than stored in each tuple.
 
     Workers never print anything — all output is driven by the main process
     reading result_queue. Algorithm stdout/stderr is captured to a per-run
     log file in logs/runs/ for the duration of each embed() call.
     """
+    # Detach from the parent's TTY so terminate() can't corrupt terminal state
+    try:
+        devnull = open(os.devnull, 'r')
+        os.dup2(devnull.fileno(), sys.stdin.fileno())
+        devnull.close()
+    except Exception:
+        pass
+
     worker_file = Path(workers_dir_str) / f"worker_{os.getpid()}.jsonl"
     logs_runs_dir = Path(logs_runs_dir_str)
     while True:
         task = task_queue.get()
         if task is None:  # sentinel — this worker's share is done
             break
-        (source_graph, target_graph, algo_name, timeout,
+        (source_graph, target_graph, algo_name,
          problem_name, topo_name, trial, trial_seed) = task
 
         log_path = run_log_path(logs_runs_dir, algo_name, problem_name, trial, trial_seed)
@@ -797,7 +1151,7 @@ class EmbeddingBenchmark:
             f"Batch {batch_id} starting: {total_measured} planned runs, n_workers={n_workers}"
         )
 
-        # Warning registry — accumulates across the entire run; printed in end summary.
+        # Warning registry — TOPOLOGY_INCOMPATIBLE populated pre-run (above).
         _warn_registry: dict = {}
         if _topo_incompat_entries:
             _warn_registry['TOPOLOGY_INCOMPATIBLE'] = {
@@ -805,8 +1159,7 @@ class EmbeddingBenchmark:
                 'total_skipped': sum(n for _, _, n in _topo_incompat_entries),
             }
 
-        # Build flat task list upfront — same order as the nested loops.
-        # Enables accurate cancel tracking for both sequential and parallel paths.
+        # Build flat task list — 7-element tuple (timeout excluded, passed uniformly).
         all_tasks = []
         for _, target_graph, topo_name in topo_list:
             for problem_name, source_graph in problems:
@@ -815,8 +1168,29 @@ class EmbeddingBenchmark:
                         continue
                     for trial in range(n_trials):
                         trial_seed = _derive_seed(seed, algo_name, problem_name, topo_name, trial)
-                        all_tasks.append((source_graph, target_graph, algo_name, timeout,
+                        all_tasks.append((source_graph, target_graph, algo_name,
                                           problem_name, topo_name, trial, trial_seed))
+
+        # Warmup: caller-owned, sequential only (n_workers > 1 disables warmup upstream).
+        if warmup_trials > 0 and n_workers == 1:
+            for _, target_graph, topo_name in topo_list:
+                for problem_name, source_graph in problems:
+                    for algo_name in valid_methods:
+                        if (algo_name, topo_name) in _incompatible_pairs:
+                            continue
+                        for w in range(warmup_trials):
+                            warmup_seed = _derive_seed(seed, algo_name, problem_name,
+                                                       topo_name, -(w + 1))
+                            if verbose:
+                                print(f"  Warm-up {algo_name} [{w+1}/{warmup_trials}]...", end=" ")
+                            _reseed_globals(warmup_seed)
+                            benchmark_one(
+                                source_graph, target_graph, algo_name,
+                                timeout=timeout, problem_name=problem_name,
+                                topology_name=topo_name, trial=-1, seed=warmup_seed,
+                            )
+                            if verbose:
+                                print("(discarded)")
 
         topo_str = f" × {len(topo_list)} topologies" if len(topo_list) > 1 else ""
         trials_str = f" × {n_trials} trials" if n_trials > 1 else ""
@@ -826,317 +1200,59 @@ class EmbeddingBenchmark:
               f"{topo_str}{trials_str}{warmup_str} = {total_runs} runs{workers_str}")
         print("Press 'q' + Enter to cancel and save a checkpoint.")
         print("=" * 80)
-        _batch_start = time.perf_counter()
 
-        # Cancel flag — set by keypress listener or KeyboardInterrupt handler
-        _cancel_flag = threading.Event()
-        if sys.stdin.isatty():
-            _cancel_listener = threading.Thread(
-                target=_keypress_cancel_listener, args=(_cancel_flag,), daemon=True
-            )
-            _cancel_listener.start()
+        # Execute measured tasks
+        exec_result = _execute_tasks(
+            all_tasks, batch_dir, batch_logger,
+            n_workers=n_workers, verbose=verbose, timeout=timeout,
+            elapsed_offset=0.0, cancel_delay=cancel_delay,
+        )
 
-        _cancelled = False
+        # Reconstruct self.results from JSONL (workers terminated inside _execute_tasks)
+        self.results = _load_results_from_jsonl(workers_dir)
 
-        # ── Sequential path (n_workers == 1) ───────────────────────────────────
-        if n_workers == 1:
-            worker_file = workers_dir / f"worker_{os.getpid()}.jsonl"
-            current_run = 0  # total runs including warmup, for display
-            done_count = 0   # completed measured tasks (advances after JSONL write)
-
-            try:
-                for _, target_graph, topo_name in topo_list:
-                    if len(topo_list) > 1:
-                        print(f"\n{'='*80}")
-                        print(f"Topology: {topo_name} ({target_graph.number_of_nodes()} qubits, "
-                              f"{target_graph.number_of_edges()} couplers)")
-                        print(f"{'='*80}")
-
-                    for problem_name, source_graph in problems:
-                        if verbose:
-                            print(f"\nProblem: {problem_name} (n={source_graph.number_of_nodes()}, "
-                                  f"e={source_graph.number_of_edges()})")
-
-                        for algo_name in valid_methods:
-                            if (algo_name, topo_name) in _incompatible_pairs:
-                                continue
-                            # Warm-up trials (results discarded)
-                            for w in range(warmup_trials):
-                                current_run += 1
-                                warmup_seed = _derive_seed(seed, algo_name, problem_name,
-                                                           topo_name, -(w + 1))
-                                if verbose:
-                                    print(f"  [{current_run}/{total_runs}] Warm-up "
-                                          f"{algo_name} [{w+1}/{warmup_trials}]...", end=" ")
-                                _reseed_globals(warmup_seed)
-                                benchmark_one(
-                                    source_graph, target_graph, algo_name,
-                                    timeout=timeout, problem_name=problem_name,
-                                    topology_name=topo_name, trial=-1, seed=warmup_seed,
-                                )
-                                if verbose:
-                                    print("(discarded)")
-
-                            # Measured trials
-                            for trial in range(n_trials):
-                                # Check cancel flag before starting each trial
-                                if _cancel_flag.is_set():
-                                    raise KeyboardInterrupt
-
-                                current_run += 1
-                                trial_seed = _derive_seed(seed, algo_name, problem_name,
-                                                          topo_name, trial)
-                                trial_str = f" [trial {trial+1}/{n_trials}]" if n_trials > 1 else ""
-                                topo_tag = f" [{topo_name}]" if len(topo_list) > 1 else ""
-                                if verbose:
-                                    print(f"  [{current_run}/{total_runs}] Running "
-                                          f"{algo_name}{trial_str}{topo_tag}...", end=" ")
-
-                                log_path = batch_logger.run_log_path(
-                                    algo_name, problem_name, trial, trial_seed)
-                                _reseed_globals(trial_seed)
-                                with capture_run(log_path):
-                                    result = benchmark_one(
-                                        source_graph, target_graph, algo_name,
-                                        timeout=timeout, problem_name=problem_name,
-                                        topology_name=topo_name, trial=trial,
-                                        seed=trial_seed,
-                                    )
-                                batch_logger.append_footer(log_path, result)
-                                batch_logger.log_run(result, trial_seed)
-
-                                if result.status == 'INVALID_OUTPUT':
-                                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
-                                    _inv[result.algorithm] = _inv.get(result.algorithm, 0) + 1
-                                elif result.status == 'CRASH':
-                                    _cr = _warn_registry.setdefault('CRASH', {})
-                                    if result.algorithm not in _cr:
-                                        _cr[result.algorithm] = {'count': 0, 'first_error': result.error}
-                                    _cr[result.algorithm]['count'] += 1
-
-                                self.results.append(result)
-                                with open(worker_file, "a") as wf:
-                                    rec = result.to_jsonl_dict()
-                                    rec['seed'] = trial_seed
-                                    rec['batch_id'] = batch_id
-                                    wf.write(json.dumps(rec) + "\n")
-                                done_count += 1  # advance only after JSONL write
-
-                                if verbose:
-                                    if result.success:
-                                        valid_str = " ✓valid" if result.is_valid else " ✗invalid"
-                                        print(f"✓ wall={result.wall_time:.3f}s "
-                                              f"cpu={result.cpu_time:.3f}s, "
-                                              f"avg_chain={result.avg_chain_length:.2f}, "
-                                              f"qubits={result.total_qubits_used}{valid_str}")
-                                    else:
-                                        print(f"✗ Failed: {result.error}")
-                                else:
-                                    pct = int(40 * current_run / total_runs)
-                                    bar = '#' * pct + '-' * (40 - pct)
-                                    elapsed = time.perf_counter() - _batch_start
-                                    print(f"\r  [{bar}] {current_run}/{total_runs}  "
-                                          f"{elapsed:.0f}s elapsed", end="", flush=True)
-
-            except KeyboardInterrupt:
-                _cancel_flag.set()
-                _cancelled = True
-
-            if not verbose:
-                print()  # newline after progress bar
-
-        # ── Parallel path (n_workers > 1) ──────────────────────────────────────
-        else:
-            task_queue: multiprocessing.Queue = multiprocessing.Queue()
-            result_queue: multiprocessing.Queue = multiprocessing.Queue()
-
-            for task in all_tasks:
-                task_queue.put(task)
-            for _ in range(n_workers):
-                task_queue.put(None)  # one sentinel per worker
-
-            worker_procs = []
-            for _ in range(n_workers):
-                p = multiprocessing.Process(
-                    target=_worker_process,
-                    args=(task_queue, result_queue, str(workers_dir), batch_id,
-                          str(batch_logger.logs_runs_dir)),
-                )
-                p.start()
-                worker_procs.append(p)
-
-            # Display loop — non-blocking with cancel check
-            n_tasks = len(all_tasks)
-            completed_display = 0
-            try:
-                while completed_display < n_tasks:
-                    if _cancel_flag.is_set():
-                        break
-                    try:
-                        display = result_queue.get(timeout=0.5)
-                    except queue.Empty:
-                        continue
-                    completed_display += 1
-                    batch_logger.log_run_from_display(display)
-
-                    _dstatus = display.get('status', '')
-                    if _dstatus == 'INVALID_OUTPUT':
-                        _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
-                        _dalgo = display['algorithm']
-                        _inv[_dalgo] = _inv.get(_dalgo, 0) + 1
-                    elif _dstatus == 'CRASH':
-                        _cr = _warn_registry.setdefault('CRASH', {})
-                        _dalgo = display['algorithm']
-                        if _dalgo not in _cr:
-                            _cr[_dalgo] = {'count': 0, 'first_error': display.get('error')}
-                        _cr[_dalgo]['count'] += 1
-
-                    if verbose:
-                        algo = display['algorithm']
-                        prob = display['problem_name']
-                        trial = display['trial']
-                        if display['success']:
-                            print(f"  [{completed_display}/{n_tasks}] {algo} / {prob} "
-                                  f"trial {trial}: ✓ wall={display['wall_time']:.3f}s "
-                                  f"avg_chain={display['avg_chain_length']:.2f}")
-                        else:
-                            print(f"  [{completed_display}/{n_tasks}] {algo} / {prob} "
-                                  f"trial {trial}: ✗ {display['status']}")
-                    else:
-                        pct = int(40 * completed_display / n_tasks)
-                        bar = '#' * pct + '-' * (40 - pct)
-                        elapsed = time.perf_counter() - _batch_start
-                        print(f"\r  [{bar}] {completed_display}/{n_tasks}  "
-                              f"{elapsed:.0f}s elapsed", end="", flush=True)
-            except KeyboardInterrupt:
-                _cancel_flag.set()
-
-            if not verbose:
-                print()
-
-            if _cancel_flag.is_set():
-                _cancelled = True
-                # Drain: collect results that arrived during/just after cancel
-                _drain_end = time.perf_counter() + cancel_delay
-                while time.perf_counter() < _drain_end:
-                    try:
-                        display = result_queue.get(timeout=0.1)
-                        completed_display += 1
-                        batch_logger.log_run_from_display(display)
-                    except queue.Empty:
-                        break
-                # Terminate all workers
-                for p in worker_procs:
-                    p.terminate()
-                for p in worker_procs:
-                    p.join(timeout=10)
-                for p in worker_procs:
-                    if p.is_alive():
-                        p.kill()
-                        p.join()
-                # Strip potentially truncated last lines written at termination time
-                for jf in workers_dir.glob("worker_*.jsonl"):
-                    _strip_truncated_jsonl(jf)
-            else:
-                for p in worker_procs:
-                    p.join()
-
-            # Reconstruct self.results from JSONL files
-            valid_fields = set(EmbeddingResult.__dataclass_fields__.keys())
-            for jf in sorted(workers_dir.glob("worker_*.jsonl")):
-                with open(jf) as fh:
-                    for line in fh:
-                        line = line.strip()
-                        if line:
-                            rec = json.loads(line)
-                            self.results.append(
-                                EmbeddingResult(**{k: v for k, v in rec.items()
-                                                   if k in valid_fields})
-                            )
-            done_count = len(self.results)
+        # Merge post-run warnings then pre-run (setdefault preserves existing keys)
+        exec_result.warning_registry.update(_compute_postrun_warnings(self.results))
+        for k, v in _warn_registry.items():
+            exec_result.warning_registry.setdefault(k, v)
 
         # ── Handle cancellation ────────────────────────────────────────────────
-        if _cancelled:
-            if n_workers == 1:
-                unfinished = all_tasks[done_count:]
-            else:
-                completed_seeds = completed_seeds_from_jsonl(batch_dir)
-                unfinished = [
-                    t for t in all_tasks
-                    if (t[2], t[4], t[5], t[7]) not in completed_seeds
-                    # index: (algo_name, problem_name, topo_name, trial_seed)
-                ]
+        if exec_result.cancelled:
             write_checkpoint(
                 batch_dir,
-                unfinished_tasks=[(t[2], t[4], t[5], t[6], t[7]) for t in unfinished],
+                unfinished_tasks=[(t[2], t[3], t[4], t[5], t[6]) for t in exec_result.unfinished_tasks],
                 total_tasks=len(all_tasks),
-                completed_count=len(all_tasks) - len(unfinished),
+                completed_count=exec_result.completed_count,
             )
             batch_logger.teardown()
-            n_done = len(all_tasks) - len(unfinished)
-            print(f"\nCancelled. {n_done}/{len(all_tasks)} trials complete.")
+            print(f"\nCancelled. {exec_result.completed_count}/{len(all_tasks)} trials complete.")
             print(f"Checkpoint saved. Resume with: load_benchmark()")
-            return batch_dir
+            _print_warn_summary(exec_result.warning_registry, batch_dir / "logs")
+            return None
 
         # ── Normal completion ──────────────────────────────────────────────────
-        batch_wall_time = time.perf_counter() - _batch_start
-
-        # Post-run warning stats: TIMING_OUTLIER and ALL_ALGORITHMS_FAILED
-        _times_by_key: dict = {}
-        for r in self.results:
-            if r.success:
-                _times_by_key.setdefault((r.algorithm, r.topology_name), []).append(r.wall_time)
-        _outlier_counts: dict = {}
-        for (algo, topo), times in _times_by_key.items():
-            if len(times) >= 2:
-                med = statistics.median(times)
-                n_out = sum(1 for t in times if t > 10 * med)
-                if n_out:
-                    _outlier_counts[(algo, topo)] = n_out
-        if _outlier_counts:
-            _warn_registry['TIMING_OUTLIER'] = _outlier_counts
-
-        _prob_topo_seen: set = set()
-        _prob_topo_success: set = set()
-        for r in self.results:
-            _prob_topo_seen.add((r.problem_name, r.topology_name))
-            if r.success:
-                _prob_topo_success.add((r.problem_name, r.topology_name))
-        _all_failed = sorted((p, t) for (p, t) in _prob_topo_seen
-                             if (p, t) not in _prob_topo_success)
-        if _all_failed:
-            _n_topos = len(set(t for _, t in _prob_topo_seen))
-            if _n_topos > 1:
-                _warn_registry['ALL_ALGORITHMS_FAILED'] = [f"{p} [{t}]" for p, t in _all_failed]
-            else:
-                _warn_registry['ALL_ALGORITHMS_FAILED'] = [p for p, _ in _all_failed]
-
+        batch_wall_time = exec_result.session_elapsed
         print("\n" + "=" * 80)
         print("Benchmark complete!")
-
         m, s = divmod(int(batch_wall_time), 60)
         h, m = divmod(m, 60)
         time_str = f"{h}h {m}m {s}s" if h else f"{m}m {s}s" if m else f"{s}s"
         print(f"Total wall time: {batch_wall_time:.1f}s ({time_str})")
-
         n_success = sum(1 for r in self.results if r.success)
         batch_logger.info(
             f"Batch {batch_id} complete: {n_success}/{len(self.results)} succeeded "
             f"in {batch_wall_time:.1f}s"
         )
-
-        # Persist total wall time in config.json
         config['batch_wall_time'] = round(batch_wall_time, 3)
         config_path = batch_dir / "config.json"
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
-
         compile_batch(batch_dir)
         batch_logger.teardown()
         _out = Path(output_dir) if output_dir else None
         final_dir = self.results_manager.move_to_output(batch_dir, output_dir=_out)
         self.results_manager.save_results(self.results, final_dir, config=config)
-        _print_warn_summary(_warn_registry, final_dir / "logs")
+        _print_warn_summary(exec_result.warning_registry, final_dir / "logs")
         print("=" * 80)
         return final_dir
 
@@ -1288,14 +1404,14 @@ def load_benchmark(batch_id: Optional[str] = None,
             f"Available: {list(ALGORITHM_REGISTRY.keys())}"
         )
 
-    # Build full task list (same order as original run)
+    # Build full task list (same order as original run) — 7-element tuple.
     all_tasks = []
     for _, target_graph, topo_name in topo_list:
         for problem_name, source_graph in problems:
             for algo_name in algorithms:
                 for trial in range(n_trials):
                     trial_seed = _derive_seed(seed, algo_name, problem_name, topo_name, trial)
-                    all_tasks.append((source_graph, target_graph, algo_name, timeout,
+                    all_tasks.append((source_graph, target_graph, algo_name,
                                       problem_name, topo_name, trial, trial_seed))
 
     # Determine which tasks remain
@@ -1309,7 +1425,7 @@ def load_benchmark(batch_id: Optional[str] = None,
         }
         remaining_tasks = [
             t for t in all_tasks
-            if (t[2], t[4], t[5], t[6], t[7]) in unfinished_set
+            if (t[2], t[3], t[4], t[5], t[6]) in unfinished_set
         ]
     else:
         # Crashed run — derive from JSONL
@@ -1317,7 +1433,7 @@ def load_benchmark(batch_id: Optional[str] = None,
         completed_seeds = completed_seeds_from_jsonl(batch_dir)
         remaining_tasks = [
             t for t in all_tasks
-            if (t[2], t[4], t[5], t[7]) not in completed_seeds
+            if (t[2], t[3], t[4], t[6]) not in completed_seeds
         ]
 
     n_remaining = len(remaining_tasks)
@@ -1362,264 +1478,47 @@ def load_benchmark(batch_id: Optional[str] = None,
 
     print("Press 'q' + Enter to cancel and save a checkpoint.")
     print("=" * 80)
-    _batch_start = time.perf_counter()
 
-    _cancel_flag = threading.Event()
-    if sys.stdin.isatty():
-        _cancel_listener = threading.Thread(
-            target=_keypress_cancel_listener, args=(_cancel_flag,), daemon=True
-        )
-        _cancel_listener.start()
+    elapsed_offset = config.get('batch_wall_time', 0.0)
 
-    _cancelled = False
-    results = []
-    done_count = 0
+    # Execute remaining tasks
+    exec_result = _execute_tasks(
+        remaining_tasks, batch_dir, batch_logger,
+        n_workers=n_workers, verbose=verbose, timeout=timeout,
+        elapsed_offset=elapsed_offset, cancel_delay=cancel_delay,
+    )
+
+    # Read all results from JSONL (original session + this session)
+    all_results = _load_results_from_jsonl(workers_dir)
+
+    # Post-run warnings computed over all results (full picture including original run)
     _warn_registry: dict = {}
-
-    # ── Sequential path ────────────────────────────────────────────────────────
-    if n_workers == 1:
-        worker_file = workers_dir / f"worker_{os.getpid()}.jsonl"
-        try:
-            for task_idx, task in enumerate(remaining_tasks):
-                if _cancel_flag.is_set():
-                    raise KeyboardInterrupt
-
-                (source_graph, target_graph, algo_name, task_timeout,
-                 problem_name, topo_name, trial, trial_seed) = task
-
-                if verbose:
-                    print(f"  [{task_idx+1}/{n_remaining}] Resuming {algo_name} / "
-                          f"{problem_name} trial {trial}...", end=" ")
-
-                log_path = batch_logger.run_log_path(algo_name, problem_name, trial, trial_seed)
-                _reseed_globals(trial_seed)
-                with capture_run(log_path):
-                    result = benchmark_one(
-                        source_graph, target_graph, algo_name,
-                        timeout=task_timeout, problem_name=problem_name,
-                        topology_name=topo_name, trial=trial, seed=trial_seed,
-                    )
-                batch_logger.append_footer(log_path, result)
-                batch_logger.log_run(result, trial_seed)
-
-                if result.status == 'INVALID_OUTPUT':
-                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
-                    _inv[result.algorithm] = _inv.get(result.algorithm, 0) + 1
-                elif result.status == 'CRASH':
-                    _cr = _warn_registry.setdefault('CRASH', {})
-                    if result.algorithm not in _cr:
-                        _cr[result.algorithm] = {'count': 0, 'first_error': result.error}
-                    _cr[result.algorithm]['count'] += 1
-
-                results.append(result)
-                with open(worker_file, "a") as wf:
-                    rec = result.to_jsonl_dict()
-                    rec['seed'] = trial_seed
-                    rec['batch_id'] = batch_id
-                    wf.write(json.dumps(rec) + "\n")
-                done_count += 1
-
-                if verbose:
-                    if result.success:
-                        print(f"✓ wall={result.wall_time:.3f}s "
-                              f"avg_chain={result.avg_chain_length:.2f}")
-                    else:
-                        print(f"✗ {result.error}")
-                else:
-                    pct = int(40 * done_count / n_remaining)
-                    bar = '#' * pct + '-' * (40 - pct)
-                    elapsed = time.perf_counter() - _batch_start
-                    print(f"\r  [{bar}] {done_count}/{n_remaining}  "
-                          f"{elapsed:.0f}s elapsed", end="", flush=True)
-
-        except KeyboardInterrupt:
-            _cancel_flag.set()
-            _cancelled = True
-
-        if not verbose:
-            print()
-
-    # ── Parallel path ──────────────────────────────────────────────────────────
-    else:
-        task_queue: multiprocessing.Queue = multiprocessing.Queue()
-        result_queue: multiprocessing.Queue = multiprocessing.Queue()
-
-        for task in remaining_tasks:
-            task_queue.put(task)
-        for _ in range(n_workers):
-            task_queue.put(None)
-
-        worker_procs = []
-        for _ in range(n_workers):
-            p = multiprocessing.Process(
-                target=_worker_process,
-                args=(task_queue, result_queue, str(workers_dir), batch_id,
-                      str(batch_logger.logs_runs_dir)),
-            )
-            p.start()
-            worker_procs.append(p)
-
-        completed_display = 0
-        try:
-            while completed_display < n_remaining:
-                if _cancel_flag.is_set():
-                    break
-                try:
-                    display = result_queue.get(timeout=0.5)
-                except queue.Empty:
-                    continue
-                completed_display += 1
-                batch_logger.log_run_from_display(display)
-
-                _dstatus = display.get('status', '')
-                if _dstatus == 'INVALID_OUTPUT':
-                    _inv = _warn_registry.setdefault('INVALID_OUTPUT', {})
-                    _dalgo = display['algorithm']
-                    _inv[_dalgo] = _inv.get(_dalgo, 0) + 1
-                elif _dstatus == 'CRASH':
-                    _cr = _warn_registry.setdefault('CRASH', {})
-                    _dalgo = display['algorithm']
-                    if _dalgo not in _cr:
-                        _cr[_dalgo] = {'count': 0, 'first_error': display.get('error')}
-                    _cr[_dalgo]['count'] += 1
-
-                if verbose:
-                    algo = display['algorithm']
-                    prob = display['problem_name']
-                    trial = display['trial']
-                    if display['success']:
-                        print(f"  [{completed_display}/{n_remaining}] {algo} / {prob} "
-                              f"trial {trial}: ✓ wall={display['wall_time']:.3f}s "
-                              f"avg_chain={display['avg_chain_length']:.2f}")
-                    else:
-                        print(f"  [{completed_display}/{n_remaining}] {algo} / {prob} "
-                              f"trial {trial}: ✗ {display['status']}")
-                else:
-                    pct = int(40 * completed_display / n_remaining)
-                    bar = '#' * pct + '-' * (40 - pct)
-                    elapsed = time.perf_counter() - _batch_start
-                    print(f"\r  [{bar}] {completed_display}/{n_remaining}  "
-                          f"{elapsed:.0f}s elapsed", end="", flush=True)
-        except KeyboardInterrupt:
-            _cancel_flag.set()
-
-        if not verbose:
-            print()
-
-        if _cancel_flag.is_set():
-            _cancelled = True
-            _drain_end = time.perf_counter() + cancel_delay
-            while time.perf_counter() < _drain_end:
-                try:
-                    display = result_queue.get(timeout=0.1)
-                    completed_display += 1
-                    batch_logger.log_run_from_display(display)
-                except queue.Empty:
-                    break
-            for p in worker_procs:
-                p.terminate()
-            for p in worker_procs:
-                p.join(timeout=10)
-            for p in worker_procs:
-                if p.is_alive():
-                    p.kill()
-                    p.join()
-            for jf in workers_dir.glob("worker_*.jsonl"):
-                _strip_truncated_jsonl(jf)
-        else:
-            for p in worker_procs:
-                p.join()
-
-        # Reconstruct results from all JSONL files (original + resumed)
-        valid_fields = set(EmbeddingResult.__dataclass_fields__.keys())
-        for jf in sorted(workers_dir.glob("worker_*.jsonl")):
-            with open(jf) as fh:
-                for line in fh:
-                    line = line.strip()
-                    if line:
-                        rec = json.loads(line)
-                        results.append(
-                            EmbeddingResult(**{k: v for k, v in rec.items()
-                                               if k in valid_fields})
-                        )
-        done_count = len(results)
+    _warn_registry.update(_compute_postrun_warnings(all_results))
+    exec_result.warning_registry.update(_warn_registry)
 
     # ── Handle cancel during resume ────────────────────────────────────────────
-    if _cancelled:
-        if n_workers == 1:
-            new_unfinished = remaining_tasks[done_count:]
-        else:
-            completed_seeds = completed_seeds_from_jsonl(batch_dir)
-            new_unfinished = [
-                t for t in all_tasks
-                if (t[2], t[4], t[5], t[7]) not in completed_seeds
-            ]
+    if exec_result.cancelled:
         write_checkpoint(
             batch_dir,
-            unfinished_tasks=[(t[2], t[4], t[5], t[6], t[7]) for t in new_unfinished],
+            unfinished_tasks=[(t[2], t[3], t[4], t[5], t[6]) for t in exec_result.unfinished_tasks],
             total_tasks=len(all_tasks),
-            completed_count=len(all_tasks) - len(new_unfinished),
+            completed_count=len(all_tasks) - len(exec_result.unfinished_tasks),
             resume_count=resume_count + 1,
         )
         batch_logger.teardown()
-        n_done = len(all_tasks) - len(new_unfinished)
+        n_done = len(all_tasks) - len(exec_result.unfinished_tasks)
         print(f"\nCancelled. {n_done}/{len(all_tasks)} trials complete.")
         print(f"Checkpoint saved. Resume again with: load_benchmark()")
         return batch_dir
 
     # ── Normal completion of resume ────────────────────────────────────────────
-    batch_wall_time = time.perf_counter() - _batch_start
-
-    # Read all results from JSONL (original + resumed) for save_results
-    all_results = []
-    valid_fields = set(EmbeddingResult.__dataclass_fields__.keys())
-    for jf in sorted(workers_dir.glob("worker_*.jsonl")):
-        with open(jf) as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    rec = json.loads(line)
-                    all_results.append(
-                        EmbeddingResult(**{k: v for k, v in rec.items()
-                                           if k in valid_fields})
-                    )
-
-    # Post-run warning stats using all_results (full picture including original run)
-    _times_by_key: dict = {}
-    for r in all_results:
-        if r.success:
-            _times_by_key.setdefault((r.algorithm, r.topology_name), []).append(r.wall_time)
-    _outlier_counts: dict = {}
-    for (algo, topo), times in _times_by_key.items():
-        if len(times) >= 2:
-            med = statistics.median(times)
-            n_out = sum(1 for t in times if t > 10 * med)
-            if n_out:
-                _outlier_counts[(algo, topo)] = n_out
-    if _outlier_counts:
-        _warn_registry['TIMING_OUTLIER'] = _outlier_counts
-
-    _prob_topo_seen: set = set()
-    _prob_topo_success: set = set()
-    for r in all_results:
-        _prob_topo_seen.add((r.problem_name, r.topology_name))
-        if r.success:
-            _prob_topo_success.add((r.problem_name, r.topology_name))
-    _all_failed = sorted((p, t) for (p, t) in _prob_topo_seen
-                         if (p, t) not in _prob_topo_success)
-    if _all_failed:
-        _n_topos = len(set(t for _, t in _prob_topo_seen))
-        if _n_topos > 1:
-            _warn_registry['ALL_ALGORITHMS_FAILED'] = [f"{p} [{t}]" for p, t in _all_failed]
-        else:
-            _warn_registry['ALL_ALGORITHMS_FAILED'] = [p for p, _ in _all_failed]
-
+    session_elapsed = exec_result.session_elapsed
+    batch_wall_time = elapsed_offset + session_elapsed
     n_success = sum(1 for r in all_results if r.success)
     batch_logger.info(
         f"Resume of {batch_id} complete: {n_success}/{len(all_results)} succeeded "
-        f"in {batch_wall_time:.1f}s"
+        f"in {session_elapsed:.1f}s (total {batch_wall_time:.1f}s)"
     )
-
     m, s = divmod(int(batch_wall_time), 60)
     h, m = divmod(m, 60)
     time_str = f"{h}h {m}m {s}s" if h else f"{m}m {s}s" if m else f"{s}s"
@@ -1633,7 +1532,7 @@ def load_benchmark(batch_id: Optional[str] = None,
     _rm = ResultsManager(str(_results_root), unfinished_dir=str(_unfinished))
     final_dir = _rm.move_to_output(batch_dir)
     _rm.save_results(all_results, final_dir, config=config)
-    _print_warn_summary(_warn_registry, final_dir / "logs")
+    _print_warn_summary(exec_result.warning_registry, final_dir / "logs")
     return final_dir
 
 
