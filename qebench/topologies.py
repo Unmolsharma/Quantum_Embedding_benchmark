@@ -167,7 +167,7 @@ def _register_builtins():
         (2, "Small test size"),
         (4, "Medium"),
         (6, "Large"),
-        (8, "Advantage2 prototype"),
+        (12, "Advantage2 prototype"),
     ]
     for m, desc in zephyr_sizes:
         name = f"zephyr_{m}"
