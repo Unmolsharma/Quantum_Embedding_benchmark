@@ -524,3 +524,43 @@ Cloned PSSA D-Wave implementation into `algorithms/pssa_dwave/`; installed as ed
 
 **2026-03-13 — MinorMiner variants**
 Added three additional registered MinorMiner variants: `minorminer-aggressive` (tries=50), `minorminer-fast` (tries=3), `minorminer-chainlength` (chainlength_patience=20).
+
+---
+
+**2026-03-28 — CLI smoke test (pip install -e)**
+
+Installed `packages/ember-qc` in editable mode (`pip install -e packages/ember-qc`). Tested all subcommands.
+
+### Passing ✅
+
+- `ember --help` — all subcommands listed correctly
+- `ember version` — prints `ember-qc 0.5.0`
+- `ember graphs list` — 167 graphs, correct nodes/edges
+- `ember graphs list --filter "1-7"` — correct subset
+- `ember graphs presets` — all presets listed
+- `ember graphs status/fetch/cache list/size/clear/verify` — all print "not yet implemented" cleanly
+- `ember topologies list` — 12 topologies, correct families
+- `ember topologies list --family chimera/zephyr` — filtering works
+- `ember topologies info` — full table with qubit/edge counts
+- `ember algos list` — 18 algorithms, correct availability status (minorminer/clique/pssa available; atom/oct/charme unavailable with correct reasons)
+- `ember algos list --available` — shows only the 9 available algorithms
+- `ember algos template` — prints full algorithm template
+- `ember algos dir` — prints correct user data path
+- `ember algos add/remove/validate/reset` — print "not yet implemented" cleanly
+- `ember config show` — all 10 keys, sources, env vars displayed
+- `ember config get default_workers` — returns `1`
+- `ember config set default_workers 4` / revert — round-trips correctly
+- `ember config path` — prints correct config.json path
+- `ember results list` — no batches (clean output, no crash)
+
+### Bugs found 🐛
+
+- **`ember config reset` — `EOFError` crash**: `cmd_config_reset` calls `input()` without catching `EOFError`. Any non-interactive invocation (CI, piped shell) crashes with a traceback. Fix: wrap `input()` in `try/except (EOFError, KeyboardInterrupt)` matching the pattern already used in `cmd_resume`. Same issue present in `cmd_results_delete`.
+
+### Not tested (require live data or interactive TTY)
+
+- `ember run` — requires YAML file and full D-Wave stack to complete
+- `ember resume` — requires an in-progress run
+- `ember results show/delete` — requires completed batches
+- `ember install-binary` — stub; not implemented
+
