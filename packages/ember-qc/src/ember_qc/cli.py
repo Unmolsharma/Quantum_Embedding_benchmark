@@ -582,30 +582,22 @@ def cmd_config_path(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_install_binary(args: argparse.Namespace) -> None:
-    print("ember install-binary: not yet implemented.")
-    print("To build manually:")
-    print("  ATOM:  cd algorithms/atom && make")
-    print("  OCT:   cd algorithms/oct_based && make")
+    from ember_qc._install_binary import install_binary
+    if args.name is None:
+        # No binary name and no --list: show status table as a helpful default.
+        from ember_qc._install_binary import list_binaries
+        list_binaries()
+        return
+    install_binary(
+        name=args.name,
+        version=getattr(args, "binary_version", None),
+        force=getattr(args, "force", False),
+    )
 
 
 def cmd_install_binary_list(args: argparse.Namespace) -> None:
-    from ember_qc._paths import get_user_binary_dir
-    binary_dir = get_user_binary_dir()
-
-    entries = [
-        ("atom", binary_dir / "atom" / "main"),
-        ("oct",  binary_dir / "oct_based" / "embedding" / "driver"),
-    ]
-    print(f"{'Name':<10}  {'Status':<12}  Path")
-    print("-" * 60)
-    for name, path in entries:
-        if path.exists():
-            status = "installed"
-            display = str(path)
-        else:
-            status = "not installed"
-            display = f"(expected: {path})"
-        print(f"  {name:<10}  {status:<12}  {display}")
+    from ember_qc._install_binary import list_binaries
+    list_binaries()
 
 
 # ---------------------------------------------------------------------------
@@ -792,11 +784,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_cpath.set_defaults(func=cmd_config_path)
 
     # -- install-binary ------------------------------------------------------
-    p_ib = sub.add_parser("install-binary", help="build and install C++ binaries")
+    p_ib = sub.add_parser("install-binary",
+                          help="download and install pre-built C++ binaries")
     p_ib.add_argument("name", nargs="?", choices=["atom", "oct"],
-                      help="binary to install")
+                      help="binary to install (atom or oct)")
+    p_ib.add_argument("--version", metavar="X.Y.Z", dest="binary_version",
+                      default=None,
+                      help="pin a specific release version (default: latest)")
+    p_ib.add_argument("--force", action="store_true", default=False,
+                      help="overwrite an already-installed binary")
     p_ib.add_argument("--list", action="store_true", dest="list_binaries",
-                      help="list available binaries and install status")
+                      help="show all binaries and their install status")
     p_ib.set_defaults(func=lambda args: cmd_install_binary_list(args)
                       if args.list_binaries else cmd_install_binary(args))
 

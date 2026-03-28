@@ -91,9 +91,9 @@ class ResultsManager:
             except Exception:
                 deps = ""
             try:
-                from ember_qc import __version__ as _qebench_version
+                from ember_qc import __version__ as _ember_version
             except Exception:
-                _qebench_version = "unknown"
+                _ember_version = "unknown"
             try:
                 from ember_qc.registry import ALGORITHM_REGISTRY
                 _algo_versions = {
@@ -108,7 +108,7 @@ class ResultsManager:
                 'platform': platform.platform(),
                 'processor': platform.processor(),
                 'dependencies': deps,
-                'qebench_version': _qebench_version,
+                'ember_version': _ember_version,
                 'algorithm_versions': _algo_versions,
             }
             with open(batch_dir / "config.json", 'w') as f:

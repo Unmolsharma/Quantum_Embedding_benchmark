@@ -58,31 +58,31 @@ class TestPackageImports:
     """Verify all public API is accessible from the top-level qebench import."""
 
     def test_import_benchmark_one(self):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         assert callable(benchmark_one)
 
     def test_import_embedding_result(self):
-        from qebench import EmbeddingResult
+        from ember_qc import EmbeddingResult
         assert EmbeddingResult is not None
 
     def test_import_compute_metrics(self):
-        from qebench import compute_embedding_metrics
+        from ember_qc import compute_embedding_metrics
         assert callable(compute_embedding_metrics)
 
     def test_import_embedding_benchmark(self):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         assert EmbeddingBenchmark is not None
 
     def test_import_registry(self):
-        from qebench import ALGORITHM_REGISTRY, register_algorithm, EmbeddingAlgorithm
+        from ember_qc import ALGORITHM_REGISTRY, register_algorithm, EmbeddingAlgorithm
         assert isinstance(ALGORITHM_REGISTRY, dict)
 
     def test_import_validation(self):
-        from qebench import validate_embedding
+        from ember_qc import validate_embedding
         assert callable(validate_embedding)
 
     def test_import_graph_functions(self):
-        from qebench import load_test_graphs, parse_graph_selection, list_presets
+        from ember_qc import load_test_graphs, parse_graph_selection, list_presets
         assert callable(load_test_graphs)
         assert callable(parse_graph_selection)
         assert callable(list_presets)
@@ -96,7 +96,7 @@ class TestBenchmarkOne:
     """Tests for the standalone benchmark_one function."""
 
     def test_successful_embedding(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(
             K4, chimera, "minorminer",
             problem_name="K4", topology_name="chimera_4x4x4", trial=0
@@ -110,7 +110,7 @@ class TestBenchmarkOne:
 
     def test_embedding_is_stored(self, chimera, K4):
         """The actual chain mapping must be returned, not thrown away."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.embedding is not None
         assert isinstance(result.embedding, dict)
@@ -121,25 +121,25 @@ class TestBenchmarkOne:
 
     def test_problem_metadata_computed(self, chimera, K8):
         """problem_nodes, problem_edges, problem_density must be auto-filled."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K8, chimera, "minorminer")
         assert result.problem_nodes == 8
         assert result.problem_edges == 28  # K8 has 8*7/2 = 28 edges
         assert abs(result.problem_density - 1.0) < 0.01  # complete graph = density 1.0
 
     def test_topology_name_preserved(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer", topology_name="my_custom_topology")
         assert result.topology_name == "my_custom_topology"
 
     def test_trial_number_preserved(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         for t in [0, 1, 5, 99]:
             result = benchmark_one(K4, chimera, "minorminer", trial=t)
             assert result.trial == t
 
     def test_quality_metrics_computed(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.avg_chain_length > 0
         assert result.max_chain_length >= 1
@@ -148,24 +148,24 @@ class TestBenchmarkOne:
         assert result.total_couplers_used >= 0
 
     def test_unknown_algorithm_raises(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         with pytest.raises(ValueError, match="Unknown algorithm"):
             benchmark_one(K4, chimera, "totally_fake_algorithm_xyz")
 
     def test_timing_is_positive(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.wall_time > 0
 
     def test_different_graphs_different_results(self, chimera, K4, K8):
         """Larger graphs should generally use more qubits."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         r4 = benchmark_one(K4, chimera, "minorminer")
         r8 = benchmark_one(K8, chimera, "minorminer")
         assert r8.total_qubits_used > r4.total_qubits_used
 
     def test_default_labels_are_empty_string(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.problem_name == ""
         assert result.topology_name == ""
@@ -179,13 +179,13 @@ class TestEmbeddingResult:
     """Tests for EmbeddingResult dataclass."""
 
     def test_to_dict_returns_dict(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         d = result.to_dict()
         assert isinstance(d, dict)
 
     def test_to_dict_has_all_fields(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer", problem_name="K4", topology_name="test")
         d = result.to_dict()
         expected_keys = {
@@ -202,7 +202,7 @@ class TestEmbeddingResult:
 
     def test_embedding_serialized_as_json_string(self, chimera, K4):
         """Embedding dict must be serialized as JSON string for CSV compatibility."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         d = result.to_dict()
         assert isinstance(d['embedding'], str)
@@ -213,7 +213,7 @@ class TestEmbeddingResult:
 
     def test_failed_result_has_none_embedding(self, chimera):
         """When embedding fails, embedding should be None."""
-        from qebench.benchmark import EmbeddingResult
+        from ember_qc.benchmark import EmbeddingResult
         result = EmbeddingResult(
             algorithm="test", problem_name="fail_test",
             topology_name="test", trial=0, success=False,
@@ -233,7 +233,7 @@ class TestComputeEmbeddingMetrics:
     """Tests for the standalone metrics function."""
 
     def test_basic_metrics(self, chimera):
-        from qebench import compute_embedding_metrics
+        from ember_qc import compute_embedding_metrics
         embedding = {0: [0, 1], 1: [4], 2: [8, 9, 10]}
         metrics = compute_embedding_metrics(embedding, chimera)
         assert metrics['chain_lengths'] == [2, 1, 3]
@@ -242,7 +242,7 @@ class TestComputeEmbeddingMetrics:
         assert metrics['total_qubits_used'] == 6
 
     def test_single_qubit_chains(self, chimera):
-        from qebench import compute_embedding_metrics
+        from ember_qc import compute_embedding_metrics
         embedding = {0: [0], 1: [4], 2: [8]}
         metrics = compute_embedding_metrics(embedding, chimera)
         assert metrics['avg_chain_length'] == 1.0
@@ -251,7 +251,7 @@ class TestComputeEmbeddingMetrics:
 
     def test_coupler_counting(self):
         """Couplers should only count edges that exist in the target graph."""
-        from qebench import compute_embedding_metrics
+        from ember_qc import compute_embedding_metrics
         # Build a small graph where we know the edges
         target = nx.Graph()
         target.add_edges_from([(0, 1), (1, 2), (2, 3)])
@@ -270,19 +270,19 @@ class TestAlgorithmRegistry:
     """Tests for the algorithm registry system."""
 
     def test_minorminer_is_registered(self):
-        from qebench import ALGORITHM_REGISTRY
+        from ember_qc import ALGORITHM_REGISTRY
         assert "minorminer" in ALGORITHM_REGISTRY
 
     def test_clique_is_registered(self):
-        from qebench import ALGORITHM_REGISTRY
+        from ember_qc import ALGORITHM_REGISTRY
         assert "clique" in ALGORITHM_REGISTRY
 
     def test_atom_is_registered(self):
-        from qebench import ALGORITHM_REGISTRY
+        from ember_qc import ALGORITHM_REGISTRY
         assert "atom" in ALGORITHM_REGISTRY
 
     def test_clique_produces_valid_embedding(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "clique", problem_name="K4")
         assert result.success is True
         assert result.is_valid is True
@@ -290,7 +290,7 @@ class TestAlgorithmRegistry:
         assert len(result.embedding) == 4
 
     def test_atom_produces_valid_embedding(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "atom", problem_name="K4")
         assert result.success is True
         # ATOM sometimes fails validation depending on seeds, but it should succeed for K4
@@ -298,7 +298,7 @@ class TestAlgorithmRegistry:
         assert len(result.embedding) == 4
 
     def test_list_algorithms_returns_names(self):
-        from qebench import list_algorithms
+        from ember_qc import list_algorithms
         algos = list_algorithms()
         assert isinstance(algos, list)
         assert "minorminer" in algos
@@ -307,14 +307,14 @@ class TestAlgorithmRegistry:
         assert len(algos) >= 2
 
     def test_algorithm_has_embed_method(self):
-        from qebench import ALGORITHM_REGISTRY
+        from ember_qc import ALGORITHM_REGISTRY
         for name, algo in ALGORITHM_REGISTRY.items():
             assert hasattr(algo, 'embed'), f"{name} missing embed()"
             assert callable(algo.embed)
 
     def test_validate_embedding_correct(self, chimera, K4):
         """validate_embedding should return True for a valid minorminer result."""
-        from qebench import benchmark_one, validate_embedding
+        from ember_qc import benchmark_one, validate_embedding
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.embedding is not None
         is_valid = validate_embedding(result.embedding, K4, chimera)
@@ -322,7 +322,7 @@ class TestAlgorithmRegistry:
 
     def test_validate_embedding_detects_bad_chains(self, chimera, K4):
         """An embedding with disconnected chains should fail validation."""
-        from qebench import validate_embedding
+        from ember_qc import validate_embedding
         # Create a fake embedding where chains use non-adjacent qubits
         bad_embedding = {0: [0, 100], 1: [4], 2: [8], 3: [12]}
         is_valid = validate_embedding(bad_embedding, K4, chimera)
@@ -330,7 +330,7 @@ class TestAlgorithmRegistry:
 
     def test_validate_embedding_detects_missing_nodes(self, chimera):
         """An embedding that doesn't cover all source nodes should fail."""
-        from qebench import validate_embedding
+        from ember_qc import validate_embedding
         K4 = nx.complete_graph(4)
         incomplete = {0: [0], 1: [4], 2: [8]}  # missing node 3
         is_valid = validate_embedding(incomplete, K4, chimera)
@@ -345,45 +345,45 @@ class TestGraphSelection:
     """Tests for graph selection parsing."""
 
     def test_parse_single_id(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("5")
         assert result == {5}
 
     def test_parse_range(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("1-5")
         assert result == {1, 2, 3, 4, 5}
 
     def test_parse_multiple_ranges(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("1-3, 10-12")
         assert result == {1, 2, 3, 10, 11, 12}
 
     def test_parse_exclusion(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("1-10, !5")
         assert 5 not in result
         assert 1 in result
         assert 10 in result
 
     def test_parse_range_exclusion(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("1-10, !3-5")
         assert result == {1, 2, 6, 7, 8, 9, 10}
 
     def test_parse_wildcard(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("*")
         assert result == {-1}  # sentinel for "all"
 
     def test_parse_preset_name(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         result = parse_graph_selection("quick")
         assert len(result) > 0
         assert -1 not in result  # resolved, not wildcard
 
     def test_parse_invalid_raises(self):
-        from qebench import parse_graph_selection
+        from ember_qc import parse_graph_selection
         with pytest.raises(ValueError):
             parse_graph_selection("not_a_preset_or_number_xyz")
 
@@ -392,24 +392,24 @@ class TestPresets:
     """Tests for the preset system."""
 
     def test_list_presets_returns_dict(self):
-        from qebench import list_presets
+        from ember_qc import list_presets
         presets = list_presets()
         assert isinstance(presets, dict)
 
     def test_standard_presets_exist(self):
-        from qebench import list_presets
+        from ember_qc import list_presets
         presets = list_presets()
         for name in ["default", "quick", "complete", "diverse", "all"]:
             assert name in presets, f"Missing preset: {name}"
 
     def test_preset_values_are_strings(self):
-        from qebench import list_presets
+        from ember_qc import list_presets
         for name, selection in list_presets().items():
             assert isinstance(selection, str), f"Preset {name} has non-string value"
 
     def test_presets_with_commas_parsed_correctly(self):
         """Commas in preset values must be preserved (first-comma split)."""
-        from qebench import list_presets
+        from ember_qc import list_presets
         presets = list_presets()
         diverse = presets.get("diverse", "")
         # "diverse" should have commas in its selection string
@@ -420,7 +420,7 @@ class TestGraphLoading:
     """Tests for loading graphs from the test_graphs/ directory."""
 
     def test_load_by_id_range(self):
-        from qebench import load_test_graphs
+        from ember_qc import load_test_graphs
         problems = load_test_graphs("1-3")
         assert len(problems) > 0
         for name, graph in problems:
@@ -429,23 +429,23 @@ class TestGraphLoading:
             assert graph.number_of_nodes() > 0
 
     def test_load_by_preset(self):
-        from qebench import load_test_graphs
+        from ember_qc import load_test_graphs
         problems = load_test_graphs("quick")
         assert len(problems) > 0
 
     def test_load_all(self):
-        from qebench import load_test_graphs
+        from ember_qc import load_test_graphs
         problems = load_test_graphs("*")
         assert len(problems) >= 10  # should have at least 10 graphs
 
     def test_load_with_exclusion(self):
-        from qebench import load_test_graphs
+        from ember_qc import load_test_graphs
         all_graphs = load_test_graphs("1-10")
         excluded = load_test_graphs("1-10, !5")
         assert len(excluded) < len(all_graphs)
 
     def test_loaded_graph_has_edges(self):
-        from qebench import load_test_graphs
+        from ember_qc import load_test_graphs
         problems = load_test_graphs("1")  # K4
         assert len(problems) == 1
         name, graph = problems[0]
@@ -460,7 +460,7 @@ class TestBatchRunner:
     """Tests for the EmbeddingBenchmark batch runner."""
 
     def test_basic_run(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1-2", methods=["minorminer"],
@@ -469,7 +469,7 @@ class TestBatchRunner:
         assert len(bench.results) > 0
 
     def test_results_saved_to_db(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         import sqlite3
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
@@ -487,7 +487,7 @@ class TestBatchRunner:
         assert rows[0][0] == 'minorminer'
 
     def test_results_saved_to_csv(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"], n_trials=1
@@ -500,7 +500,7 @@ class TestBatchRunner:
         assert (batch_dirs[0] / "config.json").exists()
 
     def test_multi_trial(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"], n_trials=3
@@ -511,7 +511,7 @@ class TestBatchRunner:
 
     def test_warmup_trials_discarded(self, tmp_path, chimera):
         """Warm-up trials should not appear in results."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"],
@@ -522,7 +522,7 @@ class TestBatchRunner:
 
     def test_topology_name_propagated(self, tmp_path, chimera):
         """topology_name from the batch call should appear in every result."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1-2", methods=["minorminer"],
@@ -533,7 +533,7 @@ class TestBatchRunner:
 
     def test_unknown_method_skipped(self, tmp_path, chimera):
         """Requesting a non-existent algorithm should skip it, not crash."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer", "totally_fake"],
@@ -544,7 +544,7 @@ class TestBatchRunner:
 
     def test_embeddings_stored_in_results(self, tmp_path, chimera):
         """Every successful result in the batch must have the embedding stored."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1-3", methods=["minorminer"], n_trials=1
@@ -556,7 +556,7 @@ class TestBatchRunner:
 
     def test_batch_note_in_config_and_readme(self, tmp_path, chimera):
         """batch_note should appear in config.json and README.md."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"], n_trials=1,
@@ -581,7 +581,7 @@ class TestResultsManager:
     """Tests for the ResultsManager module."""
 
     def test_batch_name_contains_timestamp(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path))
         batch_dir = mgr.create_batch()
         # Name should match batch_YYYY-MM-DD_HH-MM-SS
@@ -590,7 +590,7 @@ class TestResultsManager:
 
     def test_batch_dirs_are_unique(self, tmp_path):
         """Multiple batches created rapidly should have unique names."""
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path))
         dirs = [mgr.create_batch() for _ in range(3)]
         names = [d.name for d in dirs]
@@ -598,7 +598,7 @@ class TestResultsManager:
 
     def test_latest_symlink_points_to_newest(self, tmp_path):
         """latest symlink is created in results_dir after move_to_output()."""
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         b1 = mgr.create_batch()
@@ -610,7 +610,7 @@ class TestResultsManager:
         assert latest.resolve().name == b2.name
 
     def test_config_json_saved(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path))
         config = {'algorithms': ['minorminer'], 'n_trials': 3}
         batch_dir = mgr.create_batch(config)
@@ -623,7 +623,7 @@ class TestResultsManager:
 
     def test_runs_csv_excludes_embeddings(self, tmp_path, chimera, K4):
         """runs.csv should not contain the embedding or chain_lengths columns."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         import pandas as pd
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
@@ -640,7 +640,7 @@ class TestResultsManager:
 
     def test_worker_jsonl_includes_embeddings(self, tmp_path, chimera, K4):
         """Worker JSONL files should contain the full embedding for each run."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             problems=[("K4", K4)], methods=["minorminer"], n_trials=1,
@@ -656,8 +656,8 @@ class TestResultsManager:
 
     def test_summary_csv_groups_correctly(self, tmp_path, chimera, K4, K8):
         """summary.csv should have one row per (algorithm, problem_name, topology_name)."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        from ember_qc import benchmark_one
+        from ember_qc.results import ResultsManager
         import pandas as pd
         results = []
         for i in range(3):
@@ -675,8 +675,8 @@ class TestResultsManager:
 
     def test_summary_csv_has_mean_and_std(self, tmp_path, chimera, K4):
         """summary.csv must contain _mean and _std columns for metrics."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        from ember_qc import benchmark_one
+        from ember_qc.results import ResultsManager
         import pandas as pd
         results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4", trial=i) for i in range(3)]
         mgr = ResultsManager(str(tmp_path))
@@ -691,8 +691,8 @@ class TestResultsManager:
 
     def test_summary_stats_are_correct(self, tmp_path, chimera, K4):
         """Verify mean/std/median are numerically correct."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        from ember_qc import benchmark_one
+        from ember_qc.results import ResultsManager
         import pandas as pd
         import numpy as np
         results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4",
@@ -710,8 +710,8 @@ class TestResultsManager:
 
     def test_readme_generated(self, tmp_path, chimera, K4):
         """README.md must exist and contain key sections."""
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        from ember_qc import benchmark_one
+        from ember_qc.results import ResultsManager
         results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4")]
         mgr = ResultsManager(str(tmp_path))
         config = {'algorithms': ['minorminer'], 'n_trials': 1, 'timeout': 60.0,
@@ -725,8 +725,8 @@ class TestResultsManager:
         assert "runs.csv" in readme
 
     def test_readme_with_batch_note(self, tmp_path, chimera, K4):
-        from qebench import benchmark_one
-        from qebench.results import ResultsManager
+        from ember_qc import benchmark_one
+        from ember_qc.results import ResultsManager
         results = [benchmark_one(K4, chimera, "minorminer", problem_name="K4")]
         mgr = ResultsManager(str(tmp_path))
         config = {'batch_note': 'Testing note feature'}
@@ -737,7 +737,7 @@ class TestResultsManager:
 
     def test_empty_results_no_crash(self, tmp_path):
         """Saving empty results should not raise."""
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path))
         batch_dir = mgr.create_batch()
         mgr.save_results([], batch_dir)  # should not raise
@@ -751,57 +751,57 @@ class TestTopologyRegistry:
     """Tests for the topology registry system."""
 
     def test_import_topology_functions(self):
-        from qebench import (TOPOLOGY_REGISTRY, get_topology, list_topologies,
+        from ember_qc import(TOPOLOGY_REGISTRY, get_topology, list_topologies,
                              register_topology, topology_info, list_topology_families)
         assert isinstance(TOPOLOGY_REGISTRY, dict)
         assert callable(get_topology)
         assert callable(list_topologies)
 
     def test_builtin_chimera_registered(self):
-        from qebench import list_topologies
+        from ember_qc import list_topologies
         topos = list_topologies(family="chimera")
         assert "chimera_4x4x4" in topos
         assert "chimera_16x16x4" in topos
 
     def test_builtin_pegasus_registered(self):
-        from qebench import list_topologies
+        from ember_qc import list_topologies
         topos = list_topologies(family="pegasus")
         assert "pegasus_4" in topos
         assert "pegasus_16" in topos
 
     def test_builtin_zephyr_registered(self):
-        from qebench import list_topologies
+        from ember_qc import list_topologies
         topos = list_topologies(family="zephyr")
         assert "zephyr_2" in topos
         assert "zephyr_8" in topos
 
     def test_three_families_exist(self):
-        from qebench import list_topology_families
+        from ember_qc import list_topology_families
         families = list_topology_families()
         assert "chimera" in families
         assert "pegasus" in families
         assert "zephyr" in families
 
     def test_get_topology_returns_graph(self):
-        from qebench import get_topology
+        from ember_qc import get_topology
         g = get_topology("chimera_4x4x4")
         assert isinstance(g, nx.Graph)
         assert g.number_of_nodes() == 128
         assert g.number_of_edges() > 0
 
     def test_get_topology_caches(self):
-        from qebench import get_topology
+        from ember_qc import get_topology
         g1 = get_topology("chimera_4x4x4")
         g2 = get_topology("chimera_4x4x4")
         assert g1 is g2  # same object, not regenerated
 
     def test_get_topology_unknown_raises(self):
-        from qebench import get_topology
+        from ember_qc import get_topology
         with pytest.raises(ValueError, match="Unknown topology"):
             get_topology("totally_fake_topology_xyz")
 
     def test_custom_registration(self):
-        from qebench import register_topology, get_topology, TOPOLOGY_REGISTRY
+        from ember_qc import register_topology, get_topology, TOPOLOGY_REGISTRY
         register_topology(
             "test_grid_3x3",
             family="custom",
@@ -816,14 +816,14 @@ class TestTopologyRegistry:
         del TOPOLOGY_REGISTRY["test_grid_3x3"]
 
     def test_topology_info_returns_string(self):
-        from qebench import topology_info
+        from ember_qc import topology_info
         info = topology_info()
         assert isinstance(info, str)
         assert "chimera_4x4x4" in info
         assert "pegasus" in info
 
     def test_get_topology_config(self):
-        from qebench import get_topology_config
+        from ember_qc import get_topology_config
         config = get_topology_config("chimera_4x4x4")
         assert config.name == "chimera_4x4x4"
         assert config.family == "chimera"
@@ -831,7 +831,7 @@ class TestTopologyRegistry:
 
     def test_multi_topology_benchmark(self, tmp_path):
         """EmbeddingBenchmark should run across multiple topologies."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1",
@@ -875,8 +875,8 @@ def K3():
 
 # Helper: register a one-shot mock algorithm, run benchmark_one, clean up.
 def _run_mock_algo(source, target, result_dict):
-    from qebench.registry import ALGORITHM_REGISTRY, EmbeddingAlgorithm
-    from qebench.benchmark import benchmark_one
+    from ember_qc.registry import ALGORITHM_REGISTRY, EmbeddingAlgorithm
+    from ember_qc.benchmark import benchmark_one
 
     class _Mock(EmbeddingAlgorithm):
         def embed(self, src, tgt, timeout=60.0, **kw):
@@ -897,43 +897,43 @@ class TestDeriveSeed:
     """Tests for the SHA-256 per-trial seed derivation function."""
 
     def test_deterministic(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         s1 = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         s2 = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         assert s1 == s2
 
     def test_different_trials_give_different_seeds(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         seeds = [_derive_seed(42, "minorminer", "K4", "chimera", t) for t in range(5)]
         assert len(set(seeds)) == 5
 
     def test_different_problems_give_different_seeds(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         s_k4 = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         s_k8 = _derive_seed(42, "minorminer", "K8", "chimera", 0)
         assert s_k4 != s_k8
 
     def test_different_algorithms_give_different_seeds(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         s1 = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         s2 = _derive_seed(42, "clique", "K4", "chimera", 0)
         assert s1 != s2
 
     def test_different_root_seeds_give_different_seeds(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         s1 = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         s2 = _derive_seed(99, "minorminer", "K4", "chimera", 0)
         assert s1 != s2
 
     def test_returns_32bit_unsigned_int(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         s = _derive_seed(42, "minorminer", "K4", "chimera", 0)
         assert isinstance(s, int)
         assert 0 <= s < 2**32
 
     def test_warmup_seeds_distinct_from_measured(self):
         """Warmup uses negative trial indices — must not collide with trials 0–N."""
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         measured = {_derive_seed(42, "minorminer", "K4", "chimera", t) for t in range(5)}
         warmup   = {_derive_seed(42, "minorminer", "K4", "chimera", -(w+1)) for w in range(3)}
         assert measured.isdisjoint(warmup)
@@ -947,21 +947,21 @@ class TestValidationResult:
     """Tests for the ValidationResult dataclass."""
 
     def test_passed_true_defaults(self):
-        from qebench.validation import ValidationResult
+        from ember_qc.validation import ValidationResult
         vr = ValidationResult(passed=True)
         assert vr.passed is True
         assert vr.check_name is None
         assert vr.detail is None
 
     def test_passed_false_fields(self):
-        from qebench.validation import ValidationResult
+        from ember_qc.validation import ValidationResult
         vr = ValidationResult(passed=False, check_name="coverage", detail="missing node 5")
         assert vr.passed is False
         assert vr.check_name == "coverage"
         assert vr.detail == "missing node 5"
 
     def test_bool_protocol(self):
-        from qebench.validation import ValidationResult
+        from ember_qc.validation import ValidationResult
         assert bool(ValidationResult(passed=True)) is True
         assert bool(ValidationResult(passed=False, check_name="x", detail="y")) is False
 
@@ -974,28 +974,28 @@ class TestValidateLayer1:
     """Unit tests for each of the five Layer 1 structural checks."""
 
     def test_valid_embedding_passes(self, small_target, K3):
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1], 1:[2,3], 2:[4,5]}, K3, small_target)
         assert result.passed is True
         assert result.check_name is None
         assert result.detail is None
 
     def test_coverage_missing_source_vertex(self, small_target, K3):
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1], 1:[2,3]}, K3, small_target)  # missing 2
         assert result.passed is False
         assert result.check_name == "coverage"
         assert "2" in result.detail
 
     def test_non_empty_chains_empty_chain_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1], 1:[], 2:[4,5]}, K3, small_target)
         assert result.passed is False
         assert result.check_name == "non_empty_chains"
 
     def test_connectivity_disconnected_chain_rejected(self, small_target, K3):
         """Nodes 0 and 3 are not adjacent in small_target → chain [0,3] is disconnected."""
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         # 0 connects to {1,2}; 3 connects to {2,5}. chain_set={0,3}: BFS from 0
         # finds {1,2} ∩ {0,3} = {} → not connected.
         result = validate_layer1({0:[0,3], 1:[2], 2:[4,5]}, K3, small_target)
@@ -1005,7 +1005,7 @@ class TestValidateLayer1:
 
     def test_connectivity_single_node_chain_trivially_passes(self, small_target, K3):
         """Single-node chains bypass the BFS; should not cause connectivity failure."""
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         # {0:[0], 1:[2,3], 2:[4,5]} — chain 0 has one node, trivially connected.
         # Edge (0,1): {0} and {2,3}: 0's nbrs={1,2}, 2 ∈ {2,3} ✓
         # Edge (0,2): {0} and {4,5}: 0's nbrs={1,2}, neither ∈ {4,5}. → edge_preservation fail
@@ -1019,7 +1019,7 @@ class TestValidateLayer1:
         Chains {0:[0,1], 1:[1,4], 2:[4,5]} — all connected (0-1, 1-4, 4-5 edges)
         so connectivity passes and disjointness is checked.
         """
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1], 1:[1,4], 2:[4,5]}, K3, small_target)
         assert result.passed is False
         assert result.check_name == "disjointness"
@@ -1031,14 +1031,14 @@ class TestValidateLayer1:
         Source edge (0,1): 0's nbrs={1,2}, 1's nbrs={0,4}. Neither 2 nor 4 is 3.
         3's nbrs={2,5}. Neither is in {0,1}. → edge_preservation failure.
         """
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1], 1:[3], 2:[4,5]}, K3, small_target)
         assert result.passed is False
         assert result.check_name == "edge_preservation"
 
     def test_checks_run_in_order_coverage_before_connectivity(self, small_target, K3):
         """When coverage fails, connectivity is never checked."""
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         result = validate_layer1({0:[0,1]}, K3, small_target)  # missing nodes 1 and 2
         assert result.check_name == "coverage"
 
@@ -1051,7 +1051,7 @@ class TestValidateLayer2:
     """Unit tests for each of the six Layer 2 type and format checks."""
 
     def _valid(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         return validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]}, 'time': 0.5},
             K3, small_target,
@@ -1061,7 +1061,7 @@ class TestValidateLayer2:
         assert self._valid(small_target, K3).passed is True
 
     def test_extra_embedding_key_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5], 99:[0]}, 'time': 0.5},
             K3, small_target,
@@ -1071,7 +1071,7 @@ class TestValidateLayer2:
         assert "99" in result.detail
 
     def test_missing_embedding_key_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3]}, 'time': 0.5},  # missing 2
             K3, small_target,
@@ -1080,7 +1080,7 @@ class TestValidateLayer2:
         assert result.check_name == "key_validity"
 
     def test_qubit_not_in_target_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,999], 1:[2,3], 2:[4,5]}, 'time': 0.5},
             K3, small_target,
@@ -1089,7 +1089,7 @@ class TestValidateLayer2:
         assert result.check_name == "value_validity"
 
     def test_numpy_int64_key_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         emb = {np.int64(0):[0,1], np.int64(1):[2,3], np.int64(2):[4,5]}
         result = validate_layer2({'success': True, 'embedding': emb, 'time': 0.5},
                                  K3, small_target)
@@ -1098,7 +1098,7 @@ class TestValidateLayer2:
         assert "int64" in result.detail
 
     def test_numpy_int64_qubit_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         emb = {0: [np.int64(0), np.int64(1)], 1:[2,3], 2:[4,5]}
         result = validate_layer2({'success': True, 'embedding': emb, 'time': 0.5},
                                  K3, small_target)
@@ -1106,7 +1106,7 @@ class TestValidateLayer2:
         assert result.check_name == "type_correctness"
 
     def test_tuple_chain_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         emb = {0: (0, 1), 1:[2,3], 2:[4,5]}
         result = validate_layer2({'success': True, 'embedding': emb, 'time': 0.5},
                                  K3, small_target)
@@ -1115,7 +1115,7 @@ class TestValidateLayer2:
         assert "tuple" in result.detail
 
     def test_nan_wall_time_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]}, 'time': float('nan')},
             K3, small_target,
@@ -1124,7 +1124,7 @@ class TestValidateLayer2:
         assert result.check_name == "wall_time_validity"
 
     def test_zero_wall_time_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]}, 'time': 0.0},
             K3, small_target,
@@ -1133,7 +1133,7 @@ class TestValidateLayer2:
         assert result.check_name == "wall_time_validity"
 
     def test_negative_wall_time_rejected(self, small_target, K3):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]}, 'time': -1.0},
             K3, small_target,
@@ -1143,7 +1143,7 @@ class TestValidateLayer2:
 
     def test_cpu_time_exceeding_wall_times_cores_rejected(self, small_target, K3):
         import os
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         n_cores = os.cpu_count() or 1
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]},
@@ -1155,7 +1155,7 @@ class TestValidateLayer2:
 
     def test_absent_time_key_skips_time_check(self, small_target, K3):
         """No 'time' key in result — wall-time check must not run."""
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': True, 'embedding': {0:[0,1], 1:[2,3], 2:[4,5]}},
             K3, small_target,
@@ -1164,7 +1164,7 @@ class TestValidateLayer2:
 
     def test_empty_embedding_skips_embedding_checks(self, small_target, K3):
         """Empty embedding (failure path) must not trigger key/type/chain checks."""
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         result = validate_layer2(
             {'success': False, 'embedding': {}, 'time': 1.0},
             K3, small_target,
@@ -1243,7 +1243,7 @@ class TestBatchLogger:
     """Tests for the BatchLogger and capture_run() context manager."""
 
     def test_setup_creates_log_directories(self, tmp_path):
-        from qebench.loggers import BatchLogger
+        from ember_qc.loggers import BatchLogger
         logger = BatchLogger(tmp_path, "test_batch")
         logger.setup()
         assert (tmp_path / "logs" / "runs").is_dir()
@@ -1251,14 +1251,14 @@ class TestBatchLogger:
         logger.teardown()
 
     def test_setup_is_idempotent(self, tmp_path):
-        from qebench.loggers import BatchLogger
+        from ember_qc.loggers import BatchLogger
         logger = BatchLogger(tmp_path, "test_batch")
         logger.setup()
         logger.setup()  # second call must not raise
         logger.teardown()
 
     def test_runner_log_file_created_with_batch_id(self, tmp_path):
-        from qebench.loggers import BatchLogger
+        from ember_qc.loggers import BatchLogger
         logger = BatchLogger(tmp_path, "batch_XYZ")
         logger.setup()
         logger.info("hello from test")
@@ -1268,7 +1268,7 @@ class TestBatchLogger:
         assert "hello from test" in log_file.read_text()
 
     def test_run_log_path_encodes_all_components(self, tmp_path):
-        from qebench.loggers import BatchLogger
+        from ember_qc.loggers import BatchLogger
         logger = BatchLogger(tmp_path, "b")
         logger.setup()
         p = logger.run_log_path("minorminer", "K4_test", 3, 99999)
@@ -1280,7 +1280,7 @@ class TestBatchLogger:
 
     def test_capture_run_redirects_stdout(self, tmp_path):
         import sys
-        from qebench.loggers import capture_run
+        from ember_qc.loggers import capture_run
         log_path = tmp_path / "capture_test.log"
         with capture_run(log_path):
             print("captured_output_marker")
@@ -1288,7 +1288,7 @@ class TestBatchLogger:
 
     def test_capture_run_restores_streams_after_exception(self, tmp_path):
         import sys
-        from qebench.loggers import capture_run
+        from ember_qc.loggers import capture_run
         original_stdout = sys.stdout
         log_path = tmp_path / "exc_test.log"
         try:
@@ -1299,8 +1299,8 @@ class TestBatchLogger:
         assert sys.stdout is original_stdout
 
     def test_append_footer_writes_required_fields(self, tmp_path, chimera, K4):
-        from qebench import benchmark_one
-        from qebench.loggers import BatchLogger
+        from ember_qc import benchmark_one
+        from ember_qc.loggers import BatchLogger
         result = benchmark_one(K4, chimera, "minorminer")
         logger = BatchLogger(tmp_path, "b")
         logger.setup()
@@ -1315,7 +1315,7 @@ class TestBatchLogger:
         assert "cpu_time:" in content
 
     def test_full_batch_creates_per_run_log_files(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"], n_trials=2
@@ -1329,8 +1329,8 @@ class TestBatchLogger:
 
     def test_invalid_output_logged_at_warning_in_runner_log(self, tmp_path, small_target, K3):
         """INVALID_OUTPUT runs must appear as WARNING in the runner log file."""
-        from qebench.registry import ALGORITHM_REGISTRY, EmbeddingAlgorithm
-        from qebench import EmbeddingBenchmark
+        from ember_qc.registry import ALGORITHM_REGISTRY, EmbeddingAlgorithm
+        from ember_qc import EmbeddingBenchmark
 
         class BadTypeAlgo(EmbeddingAlgorithm):
             def embed(self, src, tgt, timeout=60.0, **kw):
@@ -1364,7 +1364,7 @@ class TestCompileBatch:
     """Tests for compile_batch() SQLite pipeline."""
 
     def _run_and_get_batch(self, tmp_path, chimera, K4, n_trials=1):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             problems=[("K4", K4)], methods=["minorminer"],
@@ -1429,7 +1429,7 @@ class TestCompileBatch:
     def test_unique_constraint_prevents_duplicate_rows(self, tmp_path, chimera, K4):
         """Running compile_batch a second time must not insert duplicate rows."""
         import sqlite3
-        from qebench.compile import compile_batch
+        from ember_qc.compile import compile_batch
         batch_dir = self._run_and_get_batch(tmp_path, chimera, K4)
         compile_batch(batch_dir)   # second pass
         with sqlite3.connect(batch_dir / "results.db") as conn:
@@ -1445,7 +1445,7 @@ class TestSeedingBehavior:
     """Tests for deterministic, per-trial, order-independent seed derivation."""
 
     def _collect_seeds(self, results_dir, chimera, K4, n_trials, seed=42):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
             problems=[("K4", K4)], methods=["minorminer"],
@@ -1461,7 +1461,7 @@ class TestSeedingBehavior:
         return sorted(seeds)
 
     def test_seed_stored_in_worker_jsonl(self, tmp_path, chimera, K4):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             problems=[("K4", K4)], methods=["minorminer"], n_trials=1, seed=42
@@ -1501,7 +1501,7 @@ class TestMultiprocessing:
     """Tests for the parallel execution path."""
 
     def test_parallel_produces_correct_result_count(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1-2", methods=["minorminer"], n_trials=2, n_workers=2
@@ -1510,7 +1510,7 @@ class TestMultiprocessing:
 
     def test_parallel_results_stored_in_db(self, tmp_path, chimera):
         import sqlite3
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1-2", methods=["minorminer"], n_trials=1, n_workers=2
@@ -1522,7 +1522,7 @@ class TestMultiprocessing:
 
     def test_parallel_and_sequential_produce_same_seeds(self, tmp_path, chimera):
         """Parallel run with same root seed must assign identical per-trial seeds."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
 
         def get_seed_map(results_dir, n_workers):
             bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
@@ -1545,7 +1545,7 @@ class TestMultiprocessing:
         assert get_seed_map(dir_seq, n_workers=1) == get_seed_map(dir_par, n_workers=2)
 
     def test_warmup_skipped_with_n_workers_gt_1(self, tmp_path, chimera, capsys):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1", methods=["minorminer"],
@@ -1564,13 +1564,13 @@ class TestEmbeddingResultSpec:
     """Tests for EmbeddingResult field values and serialization methods."""
 
     def test_successful_result_has_success_status(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.status == 'SUCCESS'
 
     def test_status_on_timed_out_result(self, chimera):
         """A very tight timeout on a hard graph should produce a non-SUCCESS status."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         K20 = nx.complete_graph(20)
         result = benchmark_one(K20, chimera, "minorminer", timeout=0.001)
         assert result.status in ('FAILURE', 'TIMEOUT', 'CRASH')
@@ -1578,27 +1578,27 @@ class TestEmbeddingResultSpec:
 
     def test_all_status_values_are_valid(self, chimera):
         """status field must always be one of the defined enum strings."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         valid_statuses = {'SUCCESS', 'FAILURE', 'TIMEOUT', 'CRASH', 'OOM', 'INVALID_OUTPUT'}
         for g in [nx.complete_graph(4), nx.complete_graph(25)]:
             result = benchmark_one(g, chimera, "minorminer", timeout=0.5)
             assert result.status in valid_statuses
 
     def test_algorithm_version_populated(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.algorithm_version is not None
         assert isinstance(result.algorithm_version, str)
         assert result.algorithm_version != ""
 
     def test_cpu_time_is_non_negative(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.cpu_time >= 0.0
 
     def test_operation_counters_default_to_none(self, chimera, K4):
         """minorminer does not report counters — all four must be None."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         assert result.target_node_visits is None
         assert result.cost_function_evaluations is None
@@ -1607,7 +1607,7 @@ class TestEmbeddingResultSpec:
 
     def test_to_jsonl_dict_embedding_stored_as_nested_dict(self, chimera, K4):
         """to_jsonl_dict() must store embedding as dict, NOT a JSON string."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         d = result.to_jsonl_dict()
         assert isinstance(d['embedding'], dict)    # nested dict, not a JSON string
@@ -1616,7 +1616,7 @@ class TestEmbeddingResultSpec:
             int(key)                               # must be convertible back to int
 
     def test_to_jsonl_dict_includes_chain_lengths(self, chimera, K4):
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         d = result.to_jsonl_dict()
         assert 'chain_lengths' in d
@@ -1625,7 +1625,7 @@ class TestEmbeddingResultSpec:
 
     def test_to_dict_embedding_stored_as_json_string(self, chimera, K4):
         """to_dict() (CSV path) must store embedding as a JSON string."""
-        from qebench import benchmark_one
+        from ember_qc import benchmark_one
         result = benchmark_one(K4, chimera, "minorminer")
         d = result.to_dict()
         assert isinstance(d['embedding'], str)
@@ -1642,43 +1642,43 @@ class TestNewModuleImports:
     """Verify new modules added in v1 are importable from their canonical paths."""
 
     def test_import_validate_layer1(self):
-        from qebench.validation import validate_layer1
+        from ember_qc.validation import validate_layer1
         assert callable(validate_layer1)
 
     def test_import_validate_layer2(self):
-        from qebench.validation import validate_layer2
+        from ember_qc.validation import validate_layer2
         assert callable(validate_layer2)
 
     def test_import_validation_result(self):
-        from qebench.validation import ValidationResult
+        from ember_qc.validation import ValidationResult
         assert ValidationResult is not None
 
     def test_import_batch_logger(self):
-        from qebench.loggers import BatchLogger
+        from ember_qc.loggers import BatchLogger
         assert BatchLogger is not None
 
     def test_import_capture_run(self):
-        from qebench.loggers import capture_run
+        from ember_qc.loggers import capture_run
         assert callable(capture_run)
 
     def test_import_compile_batch(self):
-        from qebench.compile import compile_batch
+        from ember_qc.compile import compile_batch
         assert callable(compile_batch)
 
     def test_import_derive_seed(self):
-        from qebench.benchmark import _derive_seed
+        from ember_qc.benchmark import _derive_seed
         assert callable(_derive_seed)
 
     def test_import_load_benchmark(self):
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         assert callable(load_benchmark)
 
     def test_import_delete_benchmark(self):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         assert callable(delete_benchmark)
 
     def test_import_checkpoint_functions(self):
-        from qebench.checkpoint import (
+        from ember_qc.checkpoint import (
             write_checkpoint, read_checkpoint, delete_checkpoint,
             completed_seeds_from_jsonl, scan_incomplete_runs,
         )
@@ -1695,7 +1695,7 @@ class TestCheckpoint:
     """Tests for qebench/checkpoint.py — all five exported functions."""
 
     def test_write_and_read_roundtrip(self, tmp_path):
-        from qebench.checkpoint import write_checkpoint, read_checkpoint
+        from ember_qc.checkpoint import write_checkpoint, read_checkpoint
         batch_dir = tmp_path / "batch_test"
         batch_dir.mkdir()
         unfinished = [("minorminer", "K4", "chimera_4x4x4", 1, 99999)]
@@ -1714,7 +1714,7 @@ class TestCheckpoint:
         assert t['trial_seed'] == 99999
 
     def test_checkpoint_has_cancelled_at_timestamp(self, tmp_path):
-        from qebench.checkpoint import write_checkpoint, read_checkpoint
+        from ember_qc.checkpoint import write_checkpoint, read_checkpoint
         batch_dir = tmp_path / "batch"
         batch_dir.mkdir()
         write_checkpoint(batch_dir, [], total_tasks=0, completed_count=0)
@@ -1723,7 +1723,7 @@ class TestCheckpoint:
         assert 'T' in cp['cancelled_at']  # ISO-8601 format includes 'T' separator
 
     def test_resume_count_stored(self, tmp_path):
-        from qebench.checkpoint import write_checkpoint, read_checkpoint
+        from ember_qc.checkpoint import write_checkpoint, read_checkpoint
         batch_dir = tmp_path / "batch"
         batch_dir.mkdir()
         write_checkpoint(batch_dir, [], total_tasks=3, completed_count=3, resume_count=2)
@@ -1731,11 +1731,11 @@ class TestCheckpoint:
         assert cp['resume_count'] == 2
 
     def test_read_checkpoint_returns_none_if_absent(self, tmp_path):
-        from qebench.checkpoint import read_checkpoint
+        from ember_qc.checkpoint import read_checkpoint
         assert read_checkpoint(tmp_path) is None
 
     def test_delete_checkpoint_removes_file(self, tmp_path):
-        from qebench.checkpoint import write_checkpoint, delete_checkpoint, read_checkpoint
+        from ember_qc.checkpoint import write_checkpoint, delete_checkpoint, read_checkpoint
         batch_dir = tmp_path / "batch"
         batch_dir.mkdir()
         write_checkpoint(batch_dir, [], total_tasks=0, completed_count=0)
@@ -1744,21 +1744,21 @@ class TestCheckpoint:
         assert read_checkpoint(batch_dir) is None
 
     def test_delete_checkpoint_noop_if_absent(self, tmp_path):
-        from qebench.checkpoint import delete_checkpoint
+        from ember_qc.checkpoint import delete_checkpoint
         delete_checkpoint(tmp_path)  # must not raise
 
     def test_completed_seeds_from_empty_workers(self, tmp_path):
-        from qebench.checkpoint import completed_seeds_from_jsonl
+        from ember_qc.checkpoint import completed_seeds_from_jsonl
         assert completed_seeds_from_jsonl(tmp_path) == set()
 
     def test_completed_seeds_from_missing_workers_dir(self, tmp_path):
-        from qebench.checkpoint import completed_seeds_from_jsonl
+        from ember_qc.checkpoint import completed_seeds_from_jsonl
         result = completed_seeds_from_jsonl(tmp_path / "nonexistent")
         assert result == set()
 
     def test_completed_seeds_reads_valid_jsonl(self, tmp_path):
         import json
-        from qebench.checkpoint import completed_seeds_from_jsonl
+        from ember_qc.checkpoint import completed_seeds_from_jsonl
         workers_dir = tmp_path / "workers"
         workers_dir.mkdir()
         rec = {
@@ -1772,7 +1772,7 @@ class TestCheckpoint:
     def test_completed_seeds_strips_truncated_last_line(self, tmp_path):
         """A partially-written last line (crash mid-write) is not counted."""
         import json
-        from qebench.checkpoint import completed_seeds_from_jsonl
+        from ember_qc.checkpoint import completed_seeds_from_jsonl
         workers_dir = tmp_path / "workers"
         workers_dir.mkdir()
         good = json.dumps({
@@ -1788,7 +1788,7 @@ class TestCheckpoint:
     def test_completed_seeds_aggregates_multiple_workers(self, tmp_path):
         """Seeds from multiple worker JSONL files are all returned."""
         import json
-        from qebench.checkpoint import completed_seeds_from_jsonl
+        from ember_qc.checkpoint import completed_seeds_from_jsonl
         workers_dir = tmp_path / "workers"
         workers_dir.mkdir()
         for i in range(3):
@@ -1803,11 +1803,11 @@ class TestCheckpoint:
         assert ('algo', 'prob2', 'topo', 200) in seeds
 
     def test_scan_incomplete_runs_returns_empty_for_nonexistent_dir(self, tmp_path):
-        from qebench.checkpoint import scan_incomplete_runs
+        from ember_qc.checkpoint import scan_incomplete_runs
         assert scan_incomplete_runs(tmp_path / "nonexistent") == []
 
     def test_scan_incomplete_runs_finds_checkpoint_batch(self, tmp_path):
-        from qebench.checkpoint import scan_incomplete_runs, write_checkpoint
+        from ember_qc.checkpoint import scan_incomplete_runs, write_checkpoint
         batch_dir = tmp_path / "batch_2026-03-17_10-00-00"
         batch_dir.mkdir()
         (batch_dir / "config.json").write_text('{"algorithms": ["mm"], "n_trials": 1}')
@@ -1821,7 +1821,7 @@ class TestCheckpoint:
 
     def test_scan_incomplete_runs_detects_crashed_batch(self, tmp_path):
         """A batch with no checkpoint.json is reported as crashed."""
-        from qebench.checkpoint import scan_incomplete_runs
+        from ember_qc.checkpoint import scan_incomplete_runs
         batch_dir = tmp_path / "batch_2026-03-17_11-00-00"
         batch_dir.mkdir()
         (batch_dir / "config.json").write_text('{"algorithms": ["mm"]}')
@@ -1834,7 +1834,7 @@ class TestCheckpoint:
     def test_scan_incomplete_runs_counts_jsonl_lines(self, tmp_path):
         """jsonl_lines reflects how many result lines exist in workers/."""
         import json
-        from qebench.checkpoint import scan_incomplete_runs
+        from ember_qc.checkpoint import scan_incomplete_runs
         batch_dir = tmp_path / "batch_2026-03-17_12-00-00"
         batch_dir.mkdir()
         (batch_dir / "config.json").write_text('{"algorithms": ["mm"]}')
@@ -1847,7 +1847,7 @@ class TestCheckpoint:
 
     def test_scan_incomplete_runs_sorted_most_recent_first(self, tmp_path):
         """Batches should be returned newest-first."""
-        from qebench.checkpoint import scan_incomplete_runs
+        from ember_qc.checkpoint import scan_incomplete_runs
         for name in ["batch_2026-01-01_00-00-00", "batch_2026-03-01_00-00-00",
                      "batch_2026-02-01_00-00-00"]:
             d = tmp_path / name
@@ -1859,7 +1859,7 @@ class TestCheckpoint:
 
     def test_scan_skips_dirs_without_config_json(self, tmp_path):
         """Directories without config.json are not valid batches."""
-        from qebench.checkpoint import scan_incomplete_runs
+        from ember_qc.checkpoint import scan_incomplete_runs
         d = tmp_path / "batch_2026-03-17_13-00-00"
         d.mkdir()
         # No config.json
@@ -1875,7 +1875,7 @@ class TestResultsManagerDirectory:
     """Tests for the new two-directory model in ResultsManager."""
 
     def test_create_batch_creates_in_unfinished_dir(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         batch_dir = mgr.create_batch()
@@ -1883,18 +1883,18 @@ class TestResultsManagerDirectory:
         assert not (results_dir / batch_dir.name).exists()
 
     def test_unfinished_dir_default_is_sibling_to_results(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         assert mgr.unfinished_dir == tmp_path / "runs_unfinished"
 
     def test_unfinished_dir_is_created_automatically(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path / "results"))
         assert mgr.unfinished_dir.is_dir()
 
     def test_move_to_output_moves_batch(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         mgr = ResultsManager(str(tmp_path / "results"))
         batch_dir = mgr.create_batch()
         batch_name = batch_dir.name
@@ -1904,7 +1904,7 @@ class TestResultsManagerDirectory:
         assert not batch_dir.exists()  # moved out of unfinished
 
     def test_move_to_output_with_custom_output_dir(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         custom_out = tmp_path / "custom_output"
         mgr = ResultsManager(str(tmp_path / "results"))
         batch_dir = mgr.create_batch()
@@ -1913,7 +1913,7 @@ class TestResultsManagerDirectory:
         assert final.exists()
 
     def test_move_to_output_creates_latest_symlink(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         batch_dir = mgr.create_batch()
@@ -1921,7 +1921,7 @@ class TestResultsManagerDirectory:
         assert (results_dir / "latest").is_symlink()
 
     def test_latest_symlink_tracks_most_recent_move(self, tmp_path):
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         b1 = mgr.create_batch()
@@ -1933,7 +1933,7 @@ class TestResultsManagerDirectory:
 
     def test_create_batch_does_not_appear_in_results_dir(self, tmp_path):
         """results_dir must stay empty until move_to_output is called."""
-        from qebench.results import ResultsManager
+        from ember_qc.results import ResultsManager
         results_dir = tmp_path / "results"
         mgr = ResultsManager(str(results_dir))
         mgr.create_batch()
@@ -1958,7 +1958,7 @@ class TestRunFullBenchmarkV2:
         return dirs[0]
 
     def test_seed_stored_in_config(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -1970,7 +1970,7 @@ class TestRunFullBenchmarkV2:
         assert config['seed'] == 77
 
     def test_n_workers_stored_in_config(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -1982,7 +1982,7 @@ class TestRunFullBenchmarkV2:
         assert config['n_workers'] == 1
 
     def test_batch_wall_time_in_config(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -1996,7 +1996,7 @@ class TestRunFullBenchmarkV2:
 
     def test_custom_problems_serialized_in_config(self, tmp_path, chimera, K4):
         """When graph_selection=None (custom problems), config gets custom_problems key."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -2012,7 +2012,7 @@ class TestRunFullBenchmarkV2:
 
     def test_graph_selection_does_not_add_custom_problems(self, tmp_path, chimera):
         """graph_selection='1' should NOT write custom_problems to config."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -2025,7 +2025,7 @@ class TestRunFullBenchmarkV2:
 
     def test_batch_not_in_unfinished_after_successful_run(self, tmp_path, chimera):
         """After a successful run, runs_unfinished/ must be empty."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         bench.run_full_benchmark(
@@ -2036,7 +2036,7 @@ class TestRunFullBenchmarkV2:
         assert len(remaining) == 0
 
     def test_return_value_is_in_results_dir(self, tmp_path, chimera):
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         results_dir = tmp_path / "results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(results_dir))
         final = bench.run_full_benchmark(
@@ -2048,7 +2048,7 @@ class TestRunFullBenchmarkV2:
 
     def test_output_dir_override(self, tmp_path, chimera):
         """output_dir param routes the completed batch to a custom location."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         custom_out = tmp_path / "custom_results"
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path / "default_results"))
         bench.run_full_benchmark(
@@ -2070,9 +2070,9 @@ def fake_unfinished_batch(tmp_path):
     Uses a real benchmark_one result so compile_batch can process the JSONL.
     """
     import dwave_networkx as dnx
-    from qebench import benchmark_one
-    from qebench.benchmark import _derive_seed
-    from qebench.checkpoint import write_checkpoint
+    from ember_qc import benchmark_one
+    from ember_qc.benchmark import _derive_seed
+    from ember_qc.checkpoint import write_checkpoint
 
     chimera = dnx.chimera_graph(4, 4, 4)
     K4 = nx.complete_graph(4)
@@ -2120,9 +2120,9 @@ def fake_unfinished_batch(tmp_path):
 def fake_partial_batch(tmp_path):
     """Batch with trial 0 done and trial 1 in the checkpoint as remaining."""
     import dwave_networkx as dnx
-    from qebench import benchmark_one
-    from qebench.benchmark import _derive_seed
-    from qebench.checkpoint import write_checkpoint
+    from ember_qc import benchmark_one
+    from ember_qc.benchmark import _derive_seed
+    from ember_qc.checkpoint import write_checkpoint
 
     chimera = dnx.chimera_graph(4, 4, 4)
     K4 = nx.complete_graph(4)
@@ -2177,8 +2177,8 @@ def fake_partial_batch(tmp_path):
 def fake_crashed_batch(tmp_path):
     """Batch with trial 0 done in JSONL but NO checkpoint.json (crashed run)."""
     import dwave_networkx as dnx
-    from qebench import benchmark_one
-    from qebench.benchmark import _derive_seed
+    from ember_qc import benchmark_one
+    from ember_qc.benchmark import _derive_seed
 
     chimera = dnx.chimera_graph(4, 4, 4)
     K4 = nx.complete_graph(4)
@@ -2225,7 +2225,7 @@ class TestLoadBenchmark:
     """Tests for load_benchmark() — discovery, all-done, resume, and crashed-run paths."""
 
     def test_returns_none_for_no_incomplete_runs(self, tmp_path):
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         result = load_benchmark(
             batch_id="nonexistent",
             unfinished_dir=str(tmp_path / "runs_unfinished"),
@@ -2234,7 +2234,7 @@ class TestLoadBenchmark:
         assert result is None
 
     def test_invalid_batch_id_raises(self, tmp_path, fake_unfinished_batch):
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         _, base = fake_unfinished_batch
         with pytest.raises(ValueError, match="No incomplete run"):
             load_benchmark(
@@ -2246,7 +2246,7 @@ class TestLoadBenchmark:
     def test_all_done_path_compiles_and_moves(self, fake_unfinished_batch):
         """Checkpoint with 0 remaining tasks: compile + move, no new trials run."""
         import sqlite3
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         batch_dir, base = fake_unfinished_batch
         output_dir = base / "results"
         final = load_benchmark(
@@ -2270,7 +2270,7 @@ class TestLoadBenchmark:
     def test_resume_from_checkpoint_completes_batch(self, fake_partial_batch):
         """Resume a cleanly cancelled run (checkpoint present, 1 task remaining)."""
         import sqlite3
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         batch_dir, base = fake_partial_batch
         output_dir = base / "results"
         final = load_benchmark(
@@ -2292,7 +2292,7 @@ class TestLoadBenchmark:
     def test_resume_crashed_run_from_jsonl(self, fake_crashed_batch):
         """Resume a crashed run (no checkpoint.json) by deriving tasks from JSONL."""
         import sqlite3
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         batch_dir, base = fake_crashed_batch
         output_dir = base / "results"
         final = load_benchmark(
@@ -2310,8 +2310,8 @@ class TestLoadBenchmark:
 
     def test_resume_increments_resume_count(self, fake_partial_batch):
         """After a successful resume, the checkpoint is deleted (not incremented)."""
-        from qebench import load_benchmark
-        from qebench.checkpoint import read_checkpoint
+        from ember_qc import load_benchmark
+        from ember_qc.checkpoint import read_checkpoint
         batch_dir, base = fake_partial_batch
         final = load_benchmark(
             batch_id=batch_dir.name,
@@ -2325,7 +2325,7 @@ class TestLoadBenchmark:
     def test_n_workers_override(self, fake_partial_batch):
         """n_workers kwarg overrides the value stored in config."""
         import sqlite3
-        from qebench import load_benchmark
+        from ember_qc import load_benchmark
         batch_dir, base = fake_partial_batch
         # Run with n_workers=2 even though config says 1
         final = load_benchmark(
@@ -2352,7 +2352,7 @@ class TestDeleteBenchmark:
     def _make_batch(self, base, name="batch_2026-03-17_20-00-00",
                     note="", n_done=3, n_total=5, has_checkpoint=True):
         """Write a minimal fake batch directory in runs_unfinished/."""
-        from qebench.checkpoint import write_checkpoint
+        from ember_qc.checkpoint import write_checkpoint
         unfinished_dir = base / "runs_unfinished"
         unfinished_dir.mkdir(exist_ok=True)
         batch_dir = unfinished_dir / name
@@ -2366,7 +2366,7 @@ class TestDeleteBenchmark:
         return batch_dir
 
     def test_returns_false_for_no_incomplete_runs(self, tmp_path):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         result = delete_benchmark(
             batch_id="nonexistent",
             unfinished_dir=str(tmp_path / "runs_unfinished"),
@@ -2375,7 +2375,7 @@ class TestDeleteBenchmark:
         assert result is False
 
     def test_invalid_batch_id_raises(self, tmp_path):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         self._make_batch(tmp_path)
         with pytest.raises(ValueError, match="No incomplete run"):
             delete_benchmark(
@@ -2385,7 +2385,7 @@ class TestDeleteBenchmark:
             )
 
     def test_force_deletes_without_prompt(self, tmp_path):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path)
         result = delete_benchmark(
             batch_id=batch_dir.name,
@@ -2397,7 +2397,7 @@ class TestDeleteBenchmark:
 
     def test_force_deletes_crashed_run(self, tmp_path):
         """force=True works on runs without a checkpoint (crashed)."""
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path, has_checkpoint=False)
         result = delete_benchmark(
             batch_id=batch_dir.name,
@@ -2409,7 +2409,7 @@ class TestDeleteBenchmark:
 
     def test_does_not_touch_completed_results_dir(self, tmp_path):
         """delete_benchmark only looks in runs_unfinished/, never in results/."""
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         # A batch with same name in results/ must survive
         results_dir = tmp_path / "results"
         results_dir.mkdir()
@@ -2426,7 +2426,7 @@ class TestDeleteBenchmark:
         assert protected.exists()  # results/ untouched
 
     def test_force_true_returns_true(self, tmp_path):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path, n_done=10, n_total=10)
         result = delete_benchmark(
             batch_id=batch_dir.name,
@@ -2437,7 +2437,7 @@ class TestDeleteBenchmark:
 
     def test_size_reported_for_batch_with_files(self, tmp_path, capsys):
         """disk size string appears in the printed summary."""
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path, n_done=2, n_total=4)
         # Add a file so size > 0
         (batch_dir / "extra.txt").write_text("a" * 1024)
@@ -2452,7 +2452,7 @@ class TestDeleteBenchmark:
 
     def test_progress_in_summary(self, tmp_path, capsys):
         """Progress fraction (done/total) appears in printed summary."""
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path, n_done=7, n_total=20)
         delete_benchmark(
             batch_id=batch_dir.name,
@@ -2464,7 +2464,7 @@ class TestDeleteBenchmark:
         assert "20" in captured.out
 
     def test_batch_note_in_summary(self, tmp_path, capsys):
-        from qebench import delete_benchmark
+        from ember_qc import delete_benchmark
         batch_dir = self._make_batch(tmp_path, note="my test run")
         delete_benchmark(
             batch_id=batch_dir.name,
@@ -2484,7 +2484,7 @@ class TestAlgoTopoCompatibility:
 
     def test_unrestricted_algo_compatible_with_any_topo(self):
         """An algorithm with supported_topologies=None accepts any topology."""
-        from qebench.benchmark import _algo_topo_compatible
+        from ember_qc.benchmark import _algo_topo_compatible
         # minorminer has no restriction
         assert _algo_topo_compatible("minorminer", "chimera_4x4x4") is True
         assert _algo_topo_compatible("minorminer", "pegasus_16") is True
@@ -2492,37 +2492,37 @@ class TestAlgoTopoCompatibility:
 
     def test_chimera_only_algo_rejects_pegasus(self):
         """AtomAlgorithm (supported_topologies=['chimera']) rejects pegasus."""
-        from qebench.benchmark import _algo_topo_compatible
+        from ember_qc.benchmark import _algo_topo_compatible
         assert _algo_topo_compatible("atom", "pegasus_16") is False
 
     def test_chimera_only_algo_accepts_chimera(self):
         """AtomAlgorithm accepts chimera topology names."""
-        from qebench.benchmark import _algo_topo_compatible
+        from ember_qc.benchmark import _algo_topo_compatible
         assert _algo_topo_compatible("atom", "chimera_4x4x4") is True
         assert _algo_topo_compatible("atom", "chimera_16x16x4") is True
 
     def test_prefix_matching_case_insensitive(self):
         """Prefix matching is case-insensitive."""
-        from qebench.benchmark import _algo_topo_compatible
+        from ember_qc.benchmark import _algo_topo_compatible
         assert _algo_topo_compatible("atom", "Chimera_4x4x4") is True
         assert _algo_topo_compatible("atom", "CHIMERA_16") is True
 
     def test_unknown_algo_returns_true(self):
         """Unknown algorithm name returns True — let it fail naturally."""
-        from qebench.benchmark import _algo_topo_compatible
+        from ember_qc.benchmark import _algo_topo_compatible
         assert _algo_topo_compatible("nonexistent_algo_xyz", "chimera_4x4x4") is True
         assert _algo_topo_compatible("nonexistent_algo_xyz", "pegasus_16") is True
 
     def test_supported_topologies_attribute_on_atom(self):
         """AtomAlgorithm.supported_topologies is ['chimera']."""
-        from qebench.registry import ALGORITHM_REGISTRY
+        from ember_qc.registry import ALGORITHM_REGISTRY
         atom = ALGORITHM_REGISTRY.get("atom")
         assert atom is not None
         assert atom.supported_topologies == ["chimera"]
 
     def test_incompatible_pair_excluded_from_results(self, tmp_path):
         """Atom × pegasus_4 produces no results; minorminer × pegasus_4 does."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(results_dir=str(tmp_path))
         bench.run_full_benchmark(
             graph_selection="1",
@@ -2554,7 +2554,7 @@ class TestSimulateFaults:
 
     def test_random_mode_correct_node_count(self):
         """fault_rate=0.1 removes exactly int(N*0.1) nodes."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         n = len(topo)
         faulted = simulate_faults(topo, fault_rate=0.1, fault_seed=0)
@@ -2562,7 +2562,7 @@ class TestSimulateFaults:
 
     def test_random_mode_reproducible(self):
         """Same fault_rate + fault_seed → identical faulted topology."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         f1 = simulate_faults(topo, fault_rate=0.1, fault_seed=7)
         f2 = simulate_faults(topo, fault_rate=0.1, fault_seed=7)
@@ -2571,7 +2571,7 @@ class TestSimulateFaults:
 
     def test_random_mode_different_seeds_differ(self):
         """Different seeds should (almost certainly) produce different results."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         f1 = simulate_faults(topo, fault_rate=0.25, fault_seed=1)
         f2 = simulate_faults(topo, fault_rate=0.25, fault_seed=2)
@@ -2579,7 +2579,7 @@ class TestSimulateFaults:
 
     def test_random_mode_returns_copy(self):
         """simulate_faults returns a new graph, not a view of the original."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         faulted = simulate_faults(topo, fault_rate=0.1, fault_seed=0)
         assert faulted is not topo
@@ -2592,7 +2592,7 @@ class TestSimulateFaults:
 
     def test_explicit_node_removal(self):
         """faulty_nodes=[n] removes that node and all incident edges."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         target_node = list(topo.nodes())[0]
         incident = list(topo.neighbors(target_node))
@@ -2604,7 +2604,7 @@ class TestSimulateFaults:
 
     def test_explicit_coupler_removal_keeps_endpoints(self):
         """faulty_couplers=[(u,v)] removes edge but keeps both endpoint nodes."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         u, v = list(topo.edges())[0]
         faulted = simulate_faults(topo, faulty_couplers=[(u, v)])
@@ -2614,7 +2614,7 @@ class TestSimulateFaults:
 
     def test_explicit_coupler_isolated_node_cleanup(self):
         """Nodes that become isolated after coupler removal are cleaned up."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         # Build a small graph where node 1 has degree 1 (connected only to 0)
         G = nx.path_graph(3)  # 0-1-2
         # Remove edge (0,1) — node 0 becomes isolated (degree 0); node 2 still connected to 1
@@ -2625,7 +2625,7 @@ class TestSimulateFaults:
 
     def test_no_faults_returns_copy(self):
         """All defaults → returns a copy of topology unchanged."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         result = simulate_faults(topo)
         assert result is not topo
@@ -2634,7 +2634,7 @@ class TestSimulateFaults:
 
     def test_fault_rate_zero_with_explicit_nodes_allowed(self):
         """fault_rate=0.0 alongside faulty_nodes is allowed (zero = no random faults)."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         target_node = list(topo.nodes())[0]
         # Should not raise
@@ -2644,20 +2644,20 @@ class TestSimulateFaults:
     # ── Standalone: validation errors ────────────────────────────────────────
 
     def test_fault_rate_above_one_raises(self):
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         with pytest.raises(ValueError, match="fault_rate"):
             simulate_faults(topo, fault_rate=1.5)
 
     def test_fault_rate_negative_raises(self):
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         with pytest.raises(ValueError, match="fault_rate"):
             simulate_faults(topo, fault_rate=-0.1)
 
     def test_conflicting_modes_raises(self):
         """fault_rate > 0 combined with faulty_nodes raises ValueError."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         target_node = list(topo.nodes())[0]
         with pytest.raises(ValueError):
@@ -2665,14 +2665,14 @@ class TestSimulateFaults:
 
     def test_unknown_node_in_faulty_nodes_raises(self):
         """Nonexistent node in faulty_nodes raises ValueError naming the node."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         with pytest.raises(ValueError, match="99999"):
             simulate_faults(topo, faulty_nodes=[99999])
 
     def test_unknown_node_in_faulty_couplers_raises(self):
         """Coupler referencing a nonexistent node raises ValueError."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         topo = self._small_chimera()
         real_node = list(topo.nodes())[0]
         with pytest.raises(ValueError):
@@ -2680,7 +2680,7 @@ class TestSimulateFaults:
 
     def test_nonexistent_edge_in_faulty_couplers_raises(self):
         """Coupler where both nodes exist but edge does not raises ValueError."""
-        from qebench import simulate_faults
+        from ember_qc import simulate_faults
         # Build a graph with two disconnected edges: 0-1 and 2-3
         G = nx.Graph()
         G.add_edges_from([(0, 1), (2, 3)])
@@ -2692,7 +2692,7 @@ class TestSimulateFaults:
 
     def test_scalar_fault_rate_applied_to_topology(self, tmp_path, chimera):
         """Scalar fault_rate removes nodes before embedding; run completes."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         batch_dir = bench.run_full_benchmark(
             graph_selection="1",
@@ -2708,7 +2708,7 @@ class TestSimulateFaults:
     def test_fault_seed_defaults_to_run_seed(self, tmp_path, chimera):
         """When fault_seed is not specified, it defaults to the run seed."""
         import json
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         run_seed = 77
         batch_dir = bench.run_full_benchmark(
@@ -2728,7 +2728,7 @@ class TestSimulateFaults:
     def test_explicit_fault_seed_overrides_run_seed(self, tmp_path, chimera):
         """An explicit fault_seed takes precedence over the run seed."""
         import json
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         batch_dir = bench.run_full_benchmark(
             graph_selection="1",
@@ -2747,7 +2747,7 @@ class TestSimulateFaults:
     def test_dict_fault_rate_per_topology(self, tmp_path):
         """Dict fault_rate applies different rates to different topologies."""
         import json
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(results_dir=str(tmp_path))
         batch_dir = bench.run_full_benchmark(
             graph_selection="1",
@@ -2765,7 +2765,7 @@ class TestSimulateFaults:
 
     def test_flat_faulty_nodes_raises_for_multi_topo(self, tmp_path):
         """Flat faulty_nodes collection raises ValueError for multi-topology runs."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(results_dir=str(tmp_path))
         with pytest.raises(ValueError, match="dict"):
             bench.run_full_benchmark(
@@ -2778,7 +2778,7 @@ class TestSimulateFaults:
 
     def test_per_topology_mutual_exclusion_raises(self, tmp_path, chimera):
         """fault_rate > 0 and faulty_nodes for same topology raises ValueError."""
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         with pytest.raises(ValueError, match="chimera_4x4x4"):
             bench.run_full_benchmark(
@@ -2793,7 +2793,7 @@ class TestSimulateFaults:
     def test_null_fault_config_when_no_faults(self, tmp_path, chimera):
         """fault_simulation is null in config.json when no faults specified."""
         import json
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         batch_dir = bench.run_full_benchmark(
             graph_selection="1",
@@ -2808,7 +2808,7 @@ class TestSimulateFaults:
     def test_config_records_removed_node_count(self, tmp_path, chimera):
         """Config faulty_nodes list matches the actual number of removed nodes."""
         import json
-        from qebench import EmbeddingBenchmark
+        from ember_qc import EmbeddingBenchmark
         bench = EmbeddingBenchmark(chimera, results_dir=str(tmp_path))
         fr = 0.05
         batch_dir = bench.run_full_benchmark(

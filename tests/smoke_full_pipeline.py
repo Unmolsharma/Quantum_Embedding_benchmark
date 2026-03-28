@@ -327,11 +327,11 @@ with tempfile.TemporaryDirectory(prefix="qebench_smoke_") as tmpdir:
         check("n_trials"    in cfg, "config.json missing 'n_trials'")
         check("timeout"     in cfg, "config.json missing 'timeout'")
         provenance = cfg.get("provenance", {})
-        check("qebench_version" in provenance,
-              "config.json missing provenance.qebench_version")
+        check("ember_version" in provenance,
+              "config.json missing provenance.ember_version")
         check(set(cfg.get("algorithms", [])) == set(METHODS),
               f"config algorithms mismatch: {cfg.get('algorithms')} vs {METHODS}")
-        print(f"  qebench_version: {provenance.get('qebench_version', '?')}")
+        print(f"  ember_version: {provenance.get('ember_version', '?')}")
         print(f"  algorithms:      {cfg.get('algorithms')}")
         print(f"  topologies:      {cfg.get('topologies')}")
 

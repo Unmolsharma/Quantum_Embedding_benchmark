@@ -52,8 +52,8 @@ assert "provenance" in config, "FAIL: 'provenance' key missing"
 prov = config["provenance"]
 assert "dependencies" in prov, "FAIL: 'dependencies' missing from provenance"
 assert "networkx" in prov["dependencies"], "FAIL: networkx not in dependencies"
-assert "qebench_version" in prov, "FAIL: qebench_version missing"
-print(f"  ✓ qebench_version = {prov['qebench_version']}")
+assert "ember_version" in prov, "FAIL: ember_version missing"
+print(f"  ✓ ember_version = {prov['ember_version']}")
 print(f"  ✓ dependencies field present and contains networkx")
 
 # ── CHECK 3: cpu_time non-zero for ATOM ───────────────────────────────────────

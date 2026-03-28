@@ -1,0 +1,62 @@
+name: Publish ember-qc
+
+on:
+  push:
+    tags:
+      - 'ember-qc-v*'
+
+jobs:
+  publish-pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build package
+        run: |
+          pip install build twine
+          python -m build packages/ember-qc/
+
+      - name: Upload to PyPI
+        run: twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+  build-binaries:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux-x86_64
+          - os: macos-13
+            platform: darwin-x86_64
+          - os: macos-latest
+            platform: darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile atom
+        run: |
+          cd external/atom
+          g++ -O3 utilities/src/*.cpp main.cpp -std=c++11 -o atom-${{ matrix.platform }} -pthread
+
+      - name: Compile oct
+        run: |
+          cd external/oct_based
+          g++ -std=c++11 -O2 embedding/*/src/*.cpp embedding/driver.cpp -o oct-${{ matrix.platform }}
+
+      - name: Upload binaries to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            external/atom/atom-${{ matrix.platform }}
+            external/oct_based/oct-${{ matrix.platform }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

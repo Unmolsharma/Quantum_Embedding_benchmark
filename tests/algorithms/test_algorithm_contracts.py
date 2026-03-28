@@ -25,7 +25,7 @@ import pytest
 import networkx as nx
 import dwave_networkx as dnx
 
-from qebench.registry import ALGORITHM_REGISTRY
+from ember_qc.registry import ALGORITHM_REGISTRY
 
 
 # ── Shared test fixtures ──────────────────────────────────────────────────────

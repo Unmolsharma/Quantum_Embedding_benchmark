@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS batches (
     n_invalid_output      INTEGER,
     n_failure             INTEGER,
     config_json           TEXT,
-    qebench_version       TEXT,
+    ember_version         TEXT,
     python_version        TEXT,
     platform              TEXT
 );
@@ -199,14 +199,14 @@ def compile_batch(batch_dir: Union[str, Path]) -> Path:
     con.execute(
         """INSERT OR IGNORE INTO batches
            (batch_id, started_at, n_runs_planned, config_json,
-            qebench_version, python_version, platform)
+            ember_version, python_version, platform)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (
             batch_id,
             config.get("timestamp"),
             config.get("total_measured_runs"),
             json.dumps(config),
-            provenance.get("qebench_version"),
+            provenance.get("ember_version"),
             provenance.get("python_version", platform.python_version()),
             provenance.get("platform", platform.platform()),
         ),
