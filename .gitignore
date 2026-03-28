@@ -29,7 +29,19 @@ test_graphs_generation/
 # Current experiments or local working files
 Curr_experiments/
 
-# Compiled C++ binaries
+# Compiled C++ binaries (external/ — new locations)
+external/atom/main
+external/atom/main_*
+external/atom/*.dSYM/
+external/oct_based/embedding/driver
+external/oct_based/dbg_*
+external/oct_based/oct_out_*
+external/oct_based/test_oct_*
+external/oct_based/test_triad*
+external/oct_based/data/input/
+external/oct_based/data/output/
+
+# Compiled C++ binaries (algorithms/ — legacy locations)
 algorithms/atom/main
 algorithms/atom/main_debug
 algorithms/atom/main_asan

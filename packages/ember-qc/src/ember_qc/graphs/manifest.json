@@ -1,0 +1,3050 @@
+{
+  "version": "0.5.0",
+  "graphs": [
+    {
+      "id": 1,
+      "type": "complete",
+      "parameters": {
+        "n": 4
+      },
+      "nodes": 4,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "6ca1849baa44ddefc2817ccf9871921250a3568892f97ac0c2152a69bceb23c4",
+      "url": null,
+      "size_bytes": 769
+    },
+    {
+      "id": 2,
+      "type": "complete",
+      "parameters": {
+        "n": 5
+      },
+      "nodes": 5,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "e0ea6754aa2990c3d7c0d482325faa02310043135c81994c221ece58c37cf167",
+      "url": null,
+      "size_bytes": 1035
+    },
+    {
+      "id": 3,
+      "type": "complete",
+      "parameters": {
+        "n": 6
+      },
+      "nodes": 6,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "438e7e415d05ecc1fdbd467d05d246311d9ec390b417829fc2882da384f0d7a4",
+      "url": null,
+      "size_bytes": 1358
+    },
+    {
+      "id": 4,
+      "type": "complete",
+      "parameters": {
+        "n": 8
+      },
+      "nodes": 8,
+      "edges": 28,
+      "difficulty": null,
+      "hash": "de2f1cd7421b22648dcbe2dd6fa0d86babb74f99634089449de7114952aebd64",
+      "url": null,
+      "size_bytes": 2178
+    },
+    {
+      "id": 5,
+      "type": "complete",
+      "parameters": {
+        "n": 10
+      },
+      "nodes": 10,
+      "edges": 45,
+      "difficulty": null,
+      "hash": "b7942f4404d623fb42622a55631d2ff1f81d735e7f38290bb2e7a23364a6dde0",
+      "url": null,
+      "size_bytes": 3233
+    },
+    {
+      "id": 6,
+      "type": "complete",
+      "parameters": {
+        "n": 12
+      },
+      "nodes": 12,
+      "edges": 66,
+      "difficulty": null,
+      "hash": "d70590c55320224bf0c1dc4a4c531c9f1a3c0a5403679362bc189292e3fc77b1",
+      "url": null,
+      "size_bytes": 4541
+    },
+    {
+      "id": 7,
+      "type": "complete",
+      "parameters": {
+        "n": 15
+      },
+      "nodes": 15,
+      "edges": 105,
+      "difficulty": null,
+      "hash": "9ee15c86d0c61b9eed9530dbb02bf28ab41156e6e0cf581e1b049f0b963c3040",
+      "url": null,
+      "size_bytes": 6954
+    },
+    {
+      "id": 11,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 2,
+        "n": 3
+      },
+      "nodes": 5,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "3e1920653a1c7db63766d75f4ae531071d74e1a2e7a045a3817d621b6b7da2c6",
+      "url": null,
+      "size_bytes": 1010
+    },
+    {
+      "id": 12,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 3,
+        "n": 3
+      },
+      "nodes": 6,
+      "edges": 9,
+      "difficulty": null,
+      "hash": "b744296bcc141cfca24ddb36a2c41deb1b5c0081963c02a6fd27ba9795c86781",
+      "url": null,
+      "size_bytes": 1241
+    },
+    {
+      "id": 13,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 3,
+        "n": 4
+      },
+      "nodes": 7,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "92e0066ef5fd961b22b7f853a4c13a2201e93dba50a8a244640cda677a8314d5",
+      "url": null,
+      "size_bytes": 1476
+    },
+    {
+      "id": 14,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 4,
+        "n": 4
+      },
+      "nodes": 8,
+      "edges": 16,
+      "difficulty": null,
+      "hash": "e117581d15c12071cb1eee7b4f427d25c1b1037779199bf45223431cfb47aa69",
+      "url": null,
+      "size_bytes": 1765
+    },
+    {
+      "id": 15,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 4,
+        "n": 6
+      },
+      "nodes": 10,
+      "edges": 24,
+      "difficulty": null,
+      "hash": "b72ec6ec35a626758359290dd70903f840c0bf085b27b8877c2bdffb1a905b7e",
+      "url": null,
+      "size_bytes": 2344
+    },
+    {
+      "id": 16,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 5,
+        "n": 5
+      },
+      "nodes": 10,
+      "edges": 25,
+      "difficulty": null,
+      "hash": "12eda1e7177de582401691e9e311066c44c116e2e7f1946fb6c689f067d61fd6",
+      "url": null,
+      "size_bytes": 2402
+    },
+    {
+      "id": 21,
+      "type": "grid",
+      "parameters": {
+        "m": 2,
+        "n": 2
+      },
+      "nodes": 4,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "1ada309b25250f22e1ba476c675a4bd91314b9b93781eb9b8f38c15640a22208",
+      "url": null,
+      "size_bytes": 667
+    },
+    {
+      "id": 22,
+      "type": "grid",
+      "parameters": {
+        "m": 3,
+        "n": 3
+      },
+      "nodes": 9,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "bd5a6d2d553a709d04f75654a97a1a141bec8788569a18dc98dc626a39fe3b37",
+      "url": null,
+      "size_bytes": 1297
+    },
+    {
+      "id": 23,
+      "type": "grid",
+      "parameters": {
+        "m": 3,
+        "n": 4
+      },
+      "nodes": 12,
+      "edges": 17,
+      "difficulty": null,
+      "hash": "01f4b9d2e09f2778714931394c1503eff74ea78b78ee952bbbfc2c42c9d6fed5",
+      "url": null,
+      "size_bytes": 1694
+    },
+    {
+      "id": 24,
+      "type": "grid",
+      "parameters": {
+        "m": 4,
+        "n": 4
+      },
+      "nodes": 16,
+      "edges": 24,
+      "difficulty": null,
+      "hash": "12fe9f01a9357a1ac5052210c0fb9f3b92ae32828e28209aee29db96d3ac6d23",
+      "url": null,
+      "size_bytes": 2245
+    },
+    {
+      "id": 25,
+      "type": "grid",
+      "parameters": {
+        "m": 4,
+        "n": 6
+      },
+      "nodes": 24,
+      "edges": 38,
+      "difficulty": null,
+      "hash": "ccbbf8d1d81b8a18f768b4a3eb968d8f14aa18a272128dfd83a7371f17d928a4",
+      "url": null,
+      "size_bytes": 3360
+    },
+    {
+      "id": 26,
+      "type": "grid",
+      "parameters": {
+        "m": 5,
+        "n": 5
+      },
+      "nodes": 25,
+      "edges": 40,
+      "difficulty": null,
+      "hash": "0b779b82cb76cc1ff87b5708214ae92bd4139a1862e458f117a7d9fd1a4a187b",
+      "url": null,
+      "size_bytes": 3514
+    },
+    {
+      "id": 31,
+      "type": "cycle",
+      "parameters": {
+        "n": 5
+      },
+      "nodes": 5,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "3d177f5247c8cc82cfde17fa9635f7d9c06fb4765af1e64062622194e87ad2c8",
+      "url": null,
+      "size_bytes": 744
+    },
+    {
+      "id": 32,
+      "type": "cycle",
+      "parameters": {
+        "n": 8
+      },
+      "nodes": 8,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "81148c2bf19c84f90872c41a128ad83d1ce067d50e47fbb148307a59989efb50",
+      "url": null,
+      "size_bytes": 1020
+    },
+    {
+      "id": 33,
+      "type": "cycle",
+      "parameters": {
+        "n": 10
+      },
+      "nodes": 10,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "68f4be16918728093478249b44b60b0eab38389140cd8a198aff0ff2c866b5a7",
+      "url": null,
+      "size_bytes": 1206
+    },
+    {
+      "id": 34,
+      "type": "cycle",
+      "parameters": {
+        "n": 15
+      },
+      "nodes": 15,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "5798e46cbf49085a34a9545b06def2cd09cbc9bde30863cc671ae1fd8bddfc32",
+      "url": null,
+      "size_bytes": 1676
+    },
+    {
+      "id": 35,
+      "type": "cycle",
+      "parameters": {
+        "n": 20
+      },
+      "nodes": 20,
+      "edges": 20,
+      "difficulty": null,
+      "hash": "0d14660b3f5ac8c5dec1343760b92c9917f2ecf9058eb790a5fd9efddf3905c5",
+      "url": null,
+      "size_bytes": 2146
+    },
+    {
+      "id": 36,
+      "type": "cycle",
+      "parameters": {
+        "n": 30
+      },
+      "nodes": 30,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "66365e9d47d7f88dfd2186f4ee14f4d2b0b825ed3cd233cdbc32aebefe8a726d",
+      "url": null,
+      "size_bytes": 3085
+    },
+    {
+      "id": 41,
+      "type": "balanced_tree",
+      "parameters": {
+        "branching": 2,
+        "depth": 3
+      },
+      "nodes": 15,
+      "edges": 14,
+      "difficulty": null,
+      "hash": "92432289c97b9391b6ef6fb03b16236aa70f77ef5ce48dab376fb591c5d764cf",
+      "url": null,
+      "size_bytes": 1645
+    },
+    {
+      "id": 42,
+      "type": "balanced_tree",
+      "parameters": {
+        "branching": 2,
+        "depth": 4
+      },
+      "nodes": 31,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "fa4aba88e17f7af8a5b8589f78463c29d4c090c979415b74a2138bad436deab9",
+      "url": null,
+      "size_bytes": 3143
+    },
+    {
+      "id": 43,
+      "type": "balanced_tree",
+      "parameters": {
+        "branching": 2,
+        "depth": 5
+      },
+      "nodes": 63,
+      "edges": 62,
+      "difficulty": null,
+      "hash": "b861c72bdb884b070246b49dbf7d9de6034534299e044e72da0b50d933e613b7",
+      "url": null,
+      "size_bytes": 6151
+    },
+    {
+      "id": 44,
+      "type": "balanced_tree",
+      "parameters": {
+        "branching": 3,
+        "depth": 3
+      },
+      "nodes": 40,
+      "edges": 39,
+      "difficulty": null,
+      "hash": "27ca6e67449b9b81fdad486d3475b77c6bc6ff7c5c94f8035d66a193b5a85f4d",
+      "url": null,
+      "size_bytes": 3977
+    },
+    {
+      "id": 45,
+      "type": "balanced_tree",
+      "parameters": {
+        "branching": 3,
+        "depth": 4
+      },
+      "nodes": 121,
+      "edges": 120,
+      "difficulty": null,
+      "hash": "08cbb9beb8e2d0eefab69d2f976c91c8a2004d440b7207b224c7f31c56de95c9",
+      "url": null,
+      "size_bytes": 11637
+    },
+    {
+      "id": 51,
+      "type": "petersen",
+      "parameters": {},
+      "nodes": 10,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "fc95e81a492aaa511138d16170b1c91801e2f95e68f8ff6ed057a91b4929cf5a",
+      "url": null,
+      "size_bytes": 1524
+    },
+    {
+      "id": 52,
+      "type": "dodecahedral",
+      "parameters": {},
+      "nodes": 20,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "d40aadb6bae836b2cc7d75233003bd08a4d1a0fcba320ac3d5fd90dd519d6726",
+      "url": null,
+      "size_bytes": 2776
+    },
+    {
+      "id": 53,
+      "type": "icosahedral",
+      "parameters": {},
+      "nodes": 12,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "b9e1fefbeeb1f8738a85ccd1017ccb8dc82924d79fa4482811479c1a65c2fc9f",
+      "url": null,
+      "size_bytes": 2490
+    },
+    {
+      "id": 100,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.2,
+        "instance": 0,
+        "seed": 6020
+      },
+      "nodes": 6,
+      "edges": 7,
+      "difficulty": null,
+      "hash": "b4fb0ab41729d82b9d621ac65100ae003eff43cbe1aeba07347797559ab2227a",
+      "url": null,
+      "size_bytes": 971
+    },
+    {
+      "id": 101,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.2,
+        "instance": 1,
+        "seed": 6021
+      },
+      "nodes": 6,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "6c006af5240077128958fce112e520c73ad76d5da99cd76d8e97c2a9ee5f71f2",
+      "url": null,
+      "size_bytes": 797
+    },
+    {
+      "id": 102,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.2,
+        "instance": 2,
+        "seed": 6022
+      },
+      "nodes": 6,
+      "edges": 2,
+      "difficulty": null,
+      "hash": "eeee0c421bb978608dbefaefeb92e0f71af56d28a89a89cf316167fc1cf2811d",
+      "url": null,
+      "size_bytes": 681
+    },
+    {
+      "id": 103,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.3,
+        "instance": 0,
+        "seed": 6030
+      },
+      "nodes": 6,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "d954b82d49324d02f6720807a71392e2a1dd718fb0386be9b2b2c10530e9c162",
+      "url": null,
+      "size_bytes": 797
+    },
+    {
+      "id": 104,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.3,
+        "instance": 1,
+        "seed": 6031
+      },
+      "nodes": 6,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "6d6ef1d4d0b0d86eb67185ad6fdd453636b5f41d7c4aa86a1b38bcef5b501ca4",
+      "url": null,
+      "size_bytes": 797
+    },
+    {
+      "id": 105,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.3,
+        "instance": 2,
+        "seed": 6032
+      },
+      "nodes": 6,
+      "edges": 3,
+      "difficulty": null,
+      "hash": "cc2b24ec9185d9c843769914c06b93b5c097b1998b9f9334c7c511773628c16e",
+      "url": null,
+      "size_bytes": 736
+    },
+    {
+      "id": 106,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.5,
+        "instance": 0,
+        "seed": 6050
+      },
+      "nodes": 6,
+      "edges": 9,
+      "difficulty": null,
+      "hash": "34860e343b3cdfd6b80447e1a3ba76531c7f5a1b1ab5a3ba2f9554678b4e4710",
+      "url": null,
+      "size_bytes": 1084
+    },
+    {
+      "id": 107,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.5,
+        "instance": 1,
+        "seed": 6051
+      },
+      "nodes": 6,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "bdffd9f8883a689d34c99b3f2aff20cd5f68fd6d3139ceb27915ab6d6141c5de",
+      "url": null,
+      "size_bytes": 1146
+    },
+    {
+      "id": 108,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.5,
+        "instance": 2,
+        "seed": 6052
+      },
+      "nodes": 6,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "fe1de87fc93c3f6ae9e0b61408eae0d7869a3f0752f563037c79247a213543dd",
+      "url": null,
+      "size_bytes": 855
+    },
+    {
+      "id": 109,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.7,
+        "instance": 0,
+        "seed": 6070
+      },
+      "nodes": 6,
+      "edges": 7,
+      "difficulty": null,
+      "hash": "d21d70e8a33ff129d9051800827b27d3c952f85d41807ea766c4696242930035",
+      "url": null,
+      "size_bytes": 971
+    },
+    {
+      "id": 110,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.7,
+        "instance": 1,
+        "seed": 6071
+      },
+      "nodes": 6,
+      "edges": 9,
+      "difficulty": null,
+      "hash": "ca4d3ce5fdb1be2d42fcef7c1009dcb708dcfccee3c58333b2962feea3325e6b",
+      "url": null,
+      "size_bytes": 1084
+    },
+    {
+      "id": 111,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 6,
+        "density": 0.7,
+        "instance": 2,
+        "seed": 6072
+      },
+      "nodes": 6,
+      "edges": 14,
+      "difficulty": null,
+      "hash": "984cc45570687431aa137e903e6be73308f186ff0ed41507d8bf2e9bf195d868",
+      "url": null,
+      "size_bytes": 1378
+    },
+    {
+      "id": 112,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.2,
+        "instance": 0,
+        "seed": 8020
+      },
+      "nodes": 8,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "6b4af0b6a28dd5c5be1818074ab0b155048fd62e822acaba2e20b7d867d03dd4",
+      "url": null,
+      "size_bytes": 979
+    },
+    {
+      "id": 113,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.2,
+        "instance": 1,
+        "seed": 8021
+      },
+      "nodes": 8,
+      "edges": 3,
+      "difficulty": null,
+      "hash": "272d370fecde8e1d18fddd85c06089f2dbeaa9c988321df1fe3e4fd7e4b08ede",
+      "url": null,
+      "size_bytes": 805
+    },
+    {
+      "id": 114,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.2,
+        "instance": 2,
+        "seed": 8022
+      },
+      "nodes": 8,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "751b394ce3df5106498c14612dcfd08aaaebd1c37648e864593f6b01a392d31d",
+      "url": null,
+      "size_bytes": 921
+    },
+    {
+      "id": 115,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.3,
+        "instance": 0,
+        "seed": 8030
+      },
+      "nodes": 8,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "8cf708b28b5925b4b62671f5db077a26161111a61bbc71015a21e75fa6bc7f3c",
+      "url": null,
+      "size_bytes": 1328
+    },
+    {
+      "id": 116,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.3,
+        "instance": 1,
+        "seed": 8031
+      },
+      "nodes": 8,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "88b6906cf592e486cda5a3fd53d103a23a6c696c4878ead43e22010632b0ac82",
+      "url": null,
+      "size_bytes": 979
+    },
+    {
+      "id": 117,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.3,
+        "instance": 2,
+        "seed": 8032
+      },
+      "nodes": 8,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "a9b0d9b43aecc28924a7d2a03ab7162ba93208e8090db86c76804ada9231b33a",
+      "url": null,
+      "size_bytes": 1095
+    },
+    {
+      "id": 118,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.5,
+        "instance": 0,
+        "seed": 8050
+      },
+      "nodes": 8,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "ab31adcb0ceee0597ee9d07f2b64c1f0b97fc53d44de0978092a8f11359a1576",
+      "url": null,
+      "size_bytes": 1328
+    },
+    {
+      "id": 119,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.5,
+        "instance": 1,
+        "seed": 8051
+      },
+      "nodes": 8,
+      "edges": 16,
+      "difficulty": null,
+      "hash": "a0065f26a1d6562e6c48831dacf20538525e2fb6b2b5665ea8a98da7f57c42f9",
+      "url": null,
+      "size_bytes": 1560
+    },
+    {
+      "id": 120,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.5,
+        "instance": 2,
+        "seed": 8052
+      },
+      "nodes": 8,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "1157d51cedfda377382c7edb6649d86be89ec7d2db6b596a6c1077bf39e78c3e",
+      "url": null,
+      "size_bytes": 1502
+    },
+    {
+      "id": 121,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.7,
+        "instance": 0,
+        "seed": 8070
+      },
+      "nodes": 8,
+      "edges": 21,
+      "difficulty": null,
+      "hash": "32c33f57128154fb63c8b7dade4dce5c5d5fd85765fd22a1e3b6f24890dd8ca3",
+      "url": null,
+      "size_bytes": 1848
+    },
+    {
+      "id": 122,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.7,
+        "instance": 1,
+        "seed": 8071
+      },
+      "nodes": 8,
+      "edges": 19,
+      "difficulty": null,
+      "hash": "ef114ebad736ae5cbe8a6f41f5fa6ee6841a4112f87a69731d105c43dcbf5489",
+      "url": null,
+      "size_bytes": 1734
+    },
+    {
+      "id": 123,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 8,
+        "density": 0.7,
+        "instance": 2,
+        "seed": 8072
+      },
+      "nodes": 8,
+      "edges": 21,
+      "difficulty": null,
+      "hash": "933dcd850f45e538c27ee6fe14d971516b69f76edf8dcde229f77f3d2f4e79d3",
+      "url": null,
+      "size_bytes": 1848
+    },
+    {
+      "id": 124,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.2,
+        "instance": 0,
+        "seed": 10020
+      },
+      "nodes": 10,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "891d464307199b3b814d5610074d307dba73ec365c6cbf3a8e5e0cb1d7c17374",
+      "url": null,
+      "size_bytes": 1398
+    },
+    {
+      "id": 125,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.2,
+        "instance": 1,
+        "seed": 10021
+      },
+      "nodes": 10,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "02a30b4955810b3e3133b812c78eee937f10eac9e2e1ef6554c646245356ccd5",
+      "url": null,
+      "size_bytes": 1049
+    },
+    {
+      "id": 126,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.2,
+        "instance": 2,
+        "seed": 10022
+      },
+      "nodes": 10,
+      "edges": 2,
+      "difficulty": null,
+      "hash": "cefb914a2768e32c910d9535088c5e76c1cd67c3fb403f924613da6ec2012ae5",
+      "url": null,
+      "size_bytes": 817
+    },
+    {
+      "id": 127,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.3,
+        "instance": 0,
+        "seed": 10030
+      },
+      "nodes": 10,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "a4fd3be8d38b19a92fa65b3056c06334876c4d4e907bd4134c50be46bc22f0b1",
+      "url": null,
+      "size_bytes": 1572
+    },
+    {
+      "id": 128,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.3,
+        "instance": 1,
+        "seed": 10031
+      },
+      "nodes": 10,
+      "edges": 18,
+      "difficulty": null,
+      "hash": "88f68896052d6764e086e2dfa8f3c13707aae7bf2a5f8d7948d5db0ff944c97a",
+      "url": null,
+      "size_bytes": 1743
+    },
+    {
+      "id": 129,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.3,
+        "instance": 2,
+        "seed": 10032
+      },
+      "nodes": 10,
+      "edges": 16,
+      "difficulty": null,
+      "hash": "6e8b6917a51ee83d4acb6cb1c3830f1a6764401f68f1cae9da1749dc735b01cc",
+      "url": null,
+      "size_bytes": 1630
+    },
+    {
+      "id": 130,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.5,
+        "instance": 0,
+        "seed": 10050
+      },
+      "nodes": 10,
+      "edges": 22,
+      "difficulty": null,
+      "hash": "53efdeb4bb88c82b2061213f715cb4ef46735f7f75113352795cd6145d9ce6a2",
+      "url": null,
+      "size_bytes": 1978
+    },
+    {
+      "id": 131,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.5,
+        "instance": 1,
+        "seed": 10051
+      },
+      "nodes": 10,
+      "edges": 25,
+      "difficulty": null,
+      "hash": "eef1d5344905bd1e61832f194b7961d4e29e0ed9722ddd9b7becbe8d9677aa60",
+      "url": null,
+      "size_bytes": 2152
+    },
+    {
+      "id": 132,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.5,
+        "instance": 2,
+        "seed": 10052
+      },
+      "nodes": 10,
+      "edges": 21,
+      "difficulty": null,
+      "hash": "13b2c18df4ad4959d22d4a3e0fd92f017344454a621a1d7b0306310a7a159538",
+      "url": null,
+      "size_bytes": 1920
+    },
+    {
+      "id": 133,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.7,
+        "instance": 0,
+        "seed": 10070
+      },
+      "nodes": 10,
+      "edges": 28,
+      "difficulty": null,
+      "hash": "5cd73e621ddcc1f39347910ad968eed2147b14fece96d0f8ccc5995e0c6a4dac",
+      "url": null,
+      "size_bytes": 2326
+    },
+    {
+      "id": 134,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.7,
+        "instance": 1,
+        "seed": 10071
+      },
+      "nodes": 10,
+      "edges": 29,
+      "difficulty": null,
+      "hash": "f8b8ebbb62316385621507efcf6ea000b1386553ce4d77eb54dac9e10b2400b2",
+      "url": null,
+      "size_bytes": 2384
+    },
+    {
+      "id": 135,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 10,
+        "density": 0.7,
+        "instance": 2,
+        "seed": 10072
+      },
+      "nodes": 10,
+      "edges": 35,
+      "difficulty": null,
+      "hash": "94f9db93fbb8567c6e4820b5494809af4ac62627718571c983cd11286ce4f197",
+      "url": null,
+      "size_bytes": 2732
+    },
+    {
+      "id": 136,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.2,
+        "instance": 0,
+        "seed": 15020
+      },
+      "nodes": 15,
+      "edges": 28,
+      "difficulty": null,
+      "hash": "14a16a1c32baea97637bb4789c76cf10bb5d09a9c325a3201f4973836edb6e81",
+      "url": null,
+      "size_bytes": 2518
+    },
+    {
+      "id": 137,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.2,
+        "instance": 1,
+        "seed": 15021
+      },
+      "nodes": 15,
+      "edges": 19,
+      "difficulty": null,
+      "hash": "f0e9881d781663c063669c3933c9c63285e2d25cd60e74192e3437b357480620",
+      "url": null,
+      "size_bytes": 1985
+    },
+    {
+      "id": 138,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.2,
+        "instance": 2,
+        "seed": 15022
+      },
+      "nodes": 15,
+      "edges": 17,
+      "difficulty": null,
+      "hash": "dc614e839197452dcf0e1f3bf21760fbf8c5f9cd6ccb08472b656c60ad91fe34",
+      "url": null,
+      "size_bytes": 1866
+    },
+    {
+      "id": 139,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.3,
+        "instance": 0,
+        "seed": 15030
+      },
+      "nodes": 15,
+      "edges": 37,
+      "difficulty": null,
+      "hash": "c79db022b51cf13b137980fe54ef26ca7b9d8a99bef44779752344325e674421",
+      "url": null,
+      "size_bytes": 3042
+    },
+    {
+      "id": 140,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.3,
+        "instance": 1,
+        "seed": 15031
+      },
+      "nodes": 15,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "31fd4c37ae528c433a9aa056806db1a16a1a96b10eec845de13e92fd2623d8c9",
+      "url": null,
+      "size_bytes": 2631
+    },
+    {
+      "id": 141,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.3,
+        "instance": 2,
+        "seed": 15032
+      },
+      "nodes": 15,
+      "edges": 26,
+      "difficulty": null,
+      "hash": "0605c3ea6e055f3e998a47562eb61c592be28b55c298eb1d0269d997a6297c94",
+      "url": null,
+      "size_bytes": 2402
+    },
+    {
+      "id": 142,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.5,
+        "instance": 0,
+        "seed": 15050
+      },
+      "nodes": 15,
+      "edges": 53,
+      "difficulty": null,
+      "hash": "3cf8d9c161151025561ef9384f72a36529d0ca101e0c5ff4fb7159569ff5b392",
+      "url": null,
+      "size_bytes": 3984
+    },
+    {
+      "id": 143,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.5,
+        "instance": 1,
+        "seed": 15051
+      },
+      "nodes": 15,
+      "edges": 51,
+      "difficulty": null,
+      "hash": "6c9f88cb7b786d8aab5578d4ba9dc082d45be919f70a2b297aabeb4b26dd4287",
+      "url": null,
+      "size_bytes": 3861
+    },
+    {
+      "id": 144,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.5,
+        "instance": 2,
+        "seed": 15052
+      },
+      "nodes": 15,
+      "edges": 45,
+      "difficulty": null,
+      "hash": "3a5a3b69ed15fa86fa5cf550327d9d27e81b039466885963d476b29850c6994a",
+      "url": null,
+      "size_bytes": 3509
+    },
+    {
+      "id": 145,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.7,
+        "instance": 0,
+        "seed": 15070
+      },
+      "nodes": 15,
+      "edges": 74,
+      "difficulty": null,
+      "hash": "43bdb90eab560b3648cdb216a2f6ff6a4a02770303f67b6ee34463a3655fc423",
+      "url": null,
+      "size_bytes": 5213
+    },
+    {
+      "id": 146,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.7,
+        "instance": 1,
+        "seed": 15071
+      },
+      "nodes": 15,
+      "edges": 70,
+      "difficulty": null,
+      "hash": "eb087eb8a7dfa011896ab3388b9f7dae9019e293a4bce2477644217808fd4a62",
+      "url": null,
+      "size_bytes": 4982
+    },
+    {
+      "id": 147,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 15,
+        "density": 0.7,
+        "instance": 2,
+        "seed": 15072
+      },
+      "nodes": 15,
+      "edges": 80,
+      "difficulty": null,
+      "hash": "dccf3077d5645f186816119027404706b0fb79057053b548fc290320ec209278",
+      "url": null,
+      "size_bytes": 5569
+    },
+    {
+      "id": 148,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.2,
+        "instance": 0,
+        "seed": 20020
+      },
+      "nodes": 20,
+      "edges": 41,
+      "difficulty": null,
+      "hash": "3383a3add3a8eaa51ee0212f1deb5809b04067993756c61bbcafc1ff06368d78",
+      "url": null,
+      "size_bytes": 3460
+    },
+    {
+      "id": 149,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.2,
+        "instance": 1,
+        "seed": 20021
+      },
+      "nodes": 20,
+      "edges": 36,
+      "difficulty": null,
+      "hash": "57d586a42a0f5730bd89f752543f820682cb9790b2f83b4a4d640947d29fcf9e",
+      "url": null,
+      "size_bytes": 3166
+    },
+    {
+      "id": 150,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.2,
+        "instance": 2,
+        "seed": 20022
+      },
+      "nodes": 20,
+      "edges": 36,
+      "difficulty": null,
+      "hash": "41cb0b40a4de824e0ee5066b11835da57cd2672099dee3e6763d767847b2779d",
+      "url": null,
+      "size_bytes": 3168
+    },
+    {
+      "id": 151,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.3,
+        "instance": 0,
+        "seed": 20030
+      },
+      "nodes": 20,
+      "edges": 67,
+      "difficulty": null,
+      "hash": "34dab8dfcde6b54f6e4bc1c67c52b49bb5f9943e7ca44df6f2e71c8c71d31809",
+      "url": null,
+      "size_bytes": 4995
+    },
+    {
+      "id": 152,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.3,
+        "instance": 1,
+        "seed": 20031
+      },
+      "nodes": 20,
+      "edges": 51,
+      "difficulty": null,
+      "hash": "ed64f20864393644ee1c09043f0a31dbf329bd0fb8ae7158f60456e12c142ac4",
+      "url": null,
+      "size_bytes": 4048
+    },
+    {
+      "id": 153,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.3,
+        "instance": 2,
+        "seed": 20032
+      },
+      "nodes": 20,
+      "edges": 49,
+      "difficulty": null,
+      "hash": "69bfe5acb91846f237f15e038482f20c942a87422149cdb4d5de6d5fd0ddbeee",
+      "url": null,
+      "size_bytes": 3934
+    },
+    {
+      "id": 154,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.5,
+        "instance": 0,
+        "seed": 20050
+      },
+      "nodes": 20,
+      "edges": 95,
+      "difficulty": null,
+      "hash": "acf23f05f3ed61b642df9e40fa02e5ff527eea89d8644f2aa618c7ed63281b30",
+      "url": null,
+      "size_bytes": 6652
+    },
+    {
+      "id": 155,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.5,
+        "instance": 1,
+        "seed": 20051
+      },
+      "nodes": 20,
+      "edges": 96,
+      "difficulty": null,
+      "hash": "7fa3c90053b6437708352ec13e6bb1593620245456cf9ff63fd2e00f5ea15926",
+      "url": null,
+      "size_bytes": 6708
+    },
+    {
+      "id": 156,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.5,
+        "instance": 2,
+        "seed": 20052
+      },
+      "nodes": 20,
+      "edges": 98,
+      "difficulty": null,
+      "hash": "fd1efb53a7d49c97bec070ec0f95e14c3b1b1a85e7168258e2088a62b3867ba4",
+      "url": null,
+      "size_bytes": 6825
+    },
+    {
+      "id": 157,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.7,
+        "instance": 0,
+        "seed": 20070
+      },
+      "nodes": 20,
+      "edges": 134,
+      "difficulty": null,
+      "hash": "e56bcec2632b11208430fa5ca25bb3f6b03cca391a3bbf8b9fda4e13c8938fe8",
+      "url": null,
+      "size_bytes": 8948
+    },
+    {
+      "id": 158,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.7,
+        "instance": 1,
+        "seed": 20071
+      },
+      "nodes": 20,
+      "edges": 122,
+      "difficulty": null,
+      "hash": "2b55566b120078e33f1aab19a821fa04152fc31c1a8696830631ed66ae1c48f9",
+      "url": null,
+      "size_bytes": 8247
+    },
+    {
+      "id": 159,
+      "type": "erdos_renyi",
+      "parameters": {
+        "n": 20,
+        "density": 0.7,
+        "instance": 2,
+        "seed": 20072
+      },
+      "nodes": 20,
+      "edges": 124,
+      "difficulty": null,
+      "hash": "756b020fd9f2048674c4983bdee8befe353d8d8b789d921e0305058638eb7fe5",
+      "url": null,
+      "size_bytes": 8358
+    },
+    {
+      "id": 200,
+      "type": "complete",
+      "parameters": {
+        "n": 6,
+        "np_problem": "number_partitioning",
+        "numbers": [
+          3,
+          1,
+          1,
+          2,
+          2,
+          1
+        ],
+        "description": "Partition 6 numbers into two equal-sum subsets"
+      },
+      "nodes": 6,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "c0731e399a03a361e27fd1d589fd8e1e3958a2c162e79c6b8f4ea41f02fb2726",
+      "url": null,
+      "size_bytes": 1570
+    },
+    {
+      "id": 201,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 6,
+        "n": 6,
+        "np_problem": "exact_cover",
+        "universe_size": 6,
+        "num_subsets": 6,
+        "description": "Exact cover: 6 elements, 6 subsets"
+      },
+      "nodes": 12,
+      "edges": 36,
+      "difficulty": null,
+      "hash": "c5d97315458bb8691421bf6b92322613cae56fa028fb8f8bece1f85837e2bb30",
+      "url": null,
+      "size_bytes": 2969
+    },
+    {
+      "id": 202,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 5,
+        "n": 4,
+        "np_problem": "set_cover",
+        "universe_size": 5,
+        "num_subsets": 4,
+        "description": "Set cover: 5 elements, 4 subsets"
+      },
+      "nodes": 9,
+      "edges": 20,
+      "difficulty": null,
+      "hash": "e7ce986af95076c9b68e61f80f4815a6b1051299cdf7a338ee0b26240da8b311",
+      "url": null,
+      "size_bytes": 1921
+    },
+    {
+      "id": 203,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 4,
+        "n": 3,
+        "np_problem": "binary_integer_linear_programming",
+        "description": "4 binary variables, 3 linear constraints"
+      },
+      "nodes": 7,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "e787408958625d90cafba35ed7b1ab38d4d22da609890897cfacf508e218f52b",
+      "url": null,
+      "size_bytes": 1371
+    },
+    {
+      "id": 204,
+      "type": "cycle",
+      "parameters": {
+        "n": 8,
+        "np_problem": "vertex_cover",
+        "description": "Minimum vertex cover on 8-cycle"
+      },
+      "nodes": 8,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "f407198121e0b0e0a3bff76b3b2f1478c3c5d09d4be8271dd1d012cf198ad3af",
+      "url": null,
+      "size_bytes": 1128
+    },
+    {
+      "id": 205,
+      "type": "cycle",
+      "parameters": {
+        "n": 6,
+        "np_problem": "minimal_maximal_matching",
+        "description": "Minimal maximal matching on 6-cycle"
+      },
+      "nodes": 6,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "6cfa22bf6c09ba7dd574b62cdf9ac93d5742c881bb162c78a2cdc1dda2f17767",
+      "url": null,
+      "size_bytes": 963
+    },
+    {
+      "id": 206,
+      "type": "cycle",
+      "parameters": {
+        "n": 7,
+        "np_problem": "set_packing",
+        "description": "Maximum independent set / set packing on 7-cycle"
+      },
+      "nodes": 7,
+      "edges": 7,
+      "difficulty": null,
+      "hash": "b4c235f3bff126b240dd0240d30413099ec715f1323e88bc36c3c9d9de4a7aff",
+      "url": null,
+      "size_bytes": 1052
+    },
+    {
+      "id": 207,
+      "type": "isomorphism_pair",
+      "parameters": {
+        "np_problem": "graph_isomorphism",
+        "graph1_nodes": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "graph2_nodes": [
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "description": "Two isomorphic Petersen graphs with different node labeling"
+      },
+      "nodes": 20,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "5f8a7b7507a9205907e2d269146a1aded795d73490e7d6e599fecb03c675dfc4",
+      "url": null,
+      "size_bytes": 4281
+    },
+    {
+      "id": 210,
+      "type": "cycle",
+      "parameters": {
+        "n": 6,
+        "np_problem": "graph_partitioning",
+        "description": "Partition 6-cycle into two equal sets minimizing cut edges"
+      },
+      "nodes": 6,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "57cdd40d1421d14ec45ff8448319020f54142018ea26767ecae995f268392395",
+      "url": null,
+      "size_bytes": 982
+    },
+    {
+      "id": 211,
+      "type": "grid",
+      "parameters": {
+        "m": 4,
+        "n": 4,
+        "np_problem": "graph_partitioning",
+        "description": "Partition 4x4 grid into two equal sets minimizing cut edges"
+      },
+      "nodes": 16,
+      "edges": 24,
+      "difficulty": null,
+      "hash": "9a6d1defd1e63f43e1750e00e5f66883f8e1260c22e7a33be82df086a89a8dfe",
+      "url": null,
+      "size_bytes": 2394
+    },
+    {
+      "id": 212,
+      "type": "random",
+      "parameters": {
+        "n": 20,
+        "np_problem": "graph_partitioning",
+        "description": "Partition random 20-node graph into two equal sets"
+      },
+      "nodes": 20,
+      "edges": 40,
+      "difficulty": null,
+      "hash": "60bf940f092b1d84255319457eaa1fde538ec636bd02f4b357c6c1c4871c524c",
+      "url": null,
+      "size_bytes": 3465
+    },
+    {
+      "id": 213,
+      "type": "petersen",
+      "parameters": {
+        "np_problem": "clique",
+        "clique_size_k": 3,
+        "description": "Find clique of size 3 in Petersen graph"
+      },
+      "nodes": 10,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "91a818ecf51b2e4e5669f7c2c42a4230d757b8200b08778db996107cddb44de4",
+      "url": null,
+      "size_bytes": 1617
+    },
+    {
+      "id": 214,
+      "type": "random",
+      "parameters": {
+        "n": 12,
+        "m": 20,
+        "np_problem": "clique",
+        "clique_size_k": 3,
+        "description": "Find clique of size 3 in sparse random graph"
+      },
+      "nodes": 12,
+      "edges": 20,
+      "difficulty": null,
+      "hash": "3263e8dfa6c620380540c2bd122f823639692b15ed471ad4a87432596fcfd95e",
+      "url": null,
+      "size_bytes": 2014
+    },
+    {
+      "id": 215,
+      "type": "random",
+      "parameters": {
+        "n": 12,
+        "m": 40,
+        "np_problem": "clique",
+        "clique_size_k": 4,
+        "description": "Find clique of size 4 in dense random graph"
+      },
+      "nodes": 12,
+      "edges": 40,
+      "difficulty": null,
+      "hash": "9e727c55af0b04d633b6f0031103bc7acb84c002e783a5d17567aea95d888317",
+      "url": null,
+      "size_bytes": 3182
+    },
+    {
+      "id": 216,
+      "type": "3sat_mis_reduction",
+      "parameters": {
+        "num_clauses": 2,
+        "num_variables": 2,
+        "np_problem": "satisfiability",
+        "description": "3SAT with 2 clauses encoded as MIS"
+      },
+      "nodes": 6,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "ff99f7ea4f9cc2c58bd6d7badb5bbd21d20b151132b018cefce8764b7a7d8bd1",
+      "url": null,
+      "size_bytes": 1110
+    },
+    {
+      "id": 217,
+      "type": "3sat_mis_reduction",
+      "parameters": {
+        "num_clauses": 3,
+        "num_variables": 3,
+        "np_problem": "satisfiability",
+        "description": "3SAT with 3 clauses encoded as MIS"
+      },
+      "nodes": 9,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "575b17afdf1ca16dfab767bc9a5717aae1999416d61e9c0fbcce455e5327f586",
+      "url": null,
+      "size_bytes": 1442
+    },
+    {
+      "id": 218,
+      "type": "3sat_mis_reduction",
+      "parameters": {
+        "num_clauses": 5,
+        "num_variables": 4,
+        "np_problem": "satisfiability",
+        "description": "3SAT with 5 clauses encoded as MIS"
+      },
+      "nodes": 15,
+      "edges": 20,
+      "difficulty": null,
+      "hash": "d8ba589f748a984e7738bddd6d40c3b1a23d5e00b36516eed027158f8b1d52db",
+      "url": null,
+      "size_bytes": 2122
+    },
+    {
+      "id": 219,
+      "type": "complete",
+      "parameters": {
+        "n": 4,
+        "np_problem": "knapsack",
+        "weights": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "values": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "capacity": 6,
+        "description": "Knapsack with 4 items, capacity 6"
+      },
+      "nodes": 4,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "359739695b4a311ecfc7e0e0f3bdcc455cbe317db5b8de651f02d7fa3c50ad66",
+      "url": null,
+      "size_bytes": 1005
+    },
+    {
+      "id": 220,
+      "type": "complete",
+      "parameters": {
+        "n": 6,
+        "np_problem": "knapsack",
+        "weights": [
+          2,
+          3,
+          4,
+          5,
+          1,
+          3
+        ],
+        "values": [
+          3,
+          4,
+          5,
+          6,
+          2,
+          4
+        ],
+        "capacity": 8,
+        "description": "Knapsack with 6 items, capacity 8"
+      },
+      "nodes": 6,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "b3abbf525e9619b89e5b11ac33b6b7f72c5e2e47da80280f49f900db78d002d9",
+      "url": null,
+      "size_bytes": 1630
+    },
+    {
+      "id": 221,
+      "type": "complete",
+      "parameters": {
+        "n": 10,
+        "np_problem": "knapsack",
+        "weights": [
+          2,
+          3,
+          4,
+          5,
+          1,
+          3,
+          2,
+          4,
+          3,
+          5
+        ],
+        "values": [
+          3,
+          4,
+          5,
+          6,
+          2,
+          4,
+          3,
+          5,
+          4,
+          7
+        ],
+        "capacity": 15,
+        "description": "Knapsack with 10 items, capacity 15"
+      },
+      "nodes": 10,
+      "edges": 45,
+      "difficulty": null,
+      "hash": "000fdacd5b11516c2adfa6c6f32caf20f6797d4a34ac43b8b79fd322ec5af3dd",
+      "url": null,
+      "size_bytes": 3580
+    },
+    {
+      "id": 222,
+      "type": "cycle",
+      "parameters": {
+        "n": 5,
+        "np_problem": "graph_coloring",
+        "num_colors": 3,
+        "description": "3-coloring of 5-cycle"
+      },
+      "nodes": 5,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "b85cd0f6abe9332ab2ca3c7068314296c4cb9630309cd1110547f718f024990f",
+      "url": null,
+      "size_bytes": 874
+    },
+    {
+      "id": 223,
+      "type": "petersen",
+      "parameters": {
+        "np_problem": "graph_coloring",
+        "num_colors": 3,
+        "description": "3-coloring of Petersen graph"
+      },
+      "nodes": 10,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "312b53b87b75bcf7108e6e9fec2f7c357e41f01de36e6ead4484793a4b1507b7",
+      "url": null,
+      "size_bytes": 1624
+    },
+    {
+      "id": 224,
+      "type": "random",
+      "parameters": {
+        "n": 12,
+        "m": 25,
+        "np_problem": "graph_coloring",
+        "num_colors": 4,
+        "description": "4-coloring of random graph (12 nodes, 25 edges)"
+      },
+      "nodes": 12,
+      "edges": 25,
+      "difficulty": null,
+      "hash": "af0821e20a020dafe466daa095e3027fe3e0151ea7a824bb52e60108f9426c98",
+      "url": null,
+      "size_bytes": 2318
+    },
+    {
+      "id": 225,
+      "type": "cycle_complement",
+      "parameters": {
+        "n": 5,
+        "np_problem": "clique_cover",
+        "num_colors": 3,
+        "description": "Clique cover on complement of 5-cycle"
+      },
+      "nodes": 5,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "60e8e79b3eb5298581be406ab15910f3a7e6321d042937829fc91aa236b4554a",
+      "url": null,
+      "size_bytes": 900
+    },
+    {
+      "id": 226,
+      "type": "petersen_complement",
+      "parameters": {
+        "np_problem": "clique_cover",
+        "num_colors": 4,
+        "description": "Clique cover on complement of Petersen graph"
+      },
+      "nodes": 10,
+      "edges": 30,
+      "difficulty": null,
+      "hash": "845bd70a51073d716132fa3b0681a944a2cd0d380a3df97b16d1df96b6849d89",
+      "url": null,
+      "size_bytes": 2520
+    },
+    {
+      "id": 227,
+      "type": "random_complement",
+      "parameters": {
+        "n": 12,
+        "np_problem": "clique_cover",
+        "num_colors": 4,
+        "description": "Clique cover on complement of sparse random graph"
+      },
+      "nodes": 12,
+      "edges": 46,
+      "difficulty": null,
+      "hash": "ec515bff22029f807c2305c41d86a1c58f2ccff727ea4878a437ef069d7a24e1",
+      "url": null,
+      "size_bytes": 3544
+    },
+    {
+      "id": 228,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 4,
+        "n": 2,
+        "np_problem": "job_sequencing",
+        "num_jobs": 4,
+        "num_machines": 2,
+        "job_lengths": [
+          2,
+          3,
+          1,
+          4
+        ],
+        "description": "4 jobs on 2 machines"
+      },
+      "nodes": 6,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "526908f65783e5ae45ef61974eeaa9f16cd30157cf70ed87068444439bf82e1d",
+      "url": null,
+      "size_bytes": 1182
+    },
+    {
+      "id": 229,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 6,
+        "n": 3,
+        "np_problem": "job_sequencing",
+        "num_jobs": 6,
+        "num_machines": 3,
+        "job_lengths": [
+          2,
+          3,
+          1,
+          4,
+          2,
+          3
+        ],
+        "description": "6 jobs on 3 machines"
+      },
+      "nodes": 9,
+      "edges": 18,
+      "difficulty": null,
+      "hash": "84be972bffd208aac5a8bb23ceaa541cbe56345bde398c2b3ee13bd8b3d92a43",
+      "url": null,
+      "size_bytes": 1877
+    },
+    {
+      "id": 230,
+      "type": "complete_bipartite",
+      "parameters": {
+        "m": 10,
+        "n": 4,
+        "np_problem": "job_sequencing",
+        "num_jobs": 10,
+        "num_machines": 4,
+        "job_lengths": [
+          2,
+          3,
+          1,
+          4,
+          2,
+          3,
+          5,
+          1,
+          3,
+          2
+        ],
+        "description": "10 jobs on 4 machines"
+      },
+      "nodes": 14,
+      "edges": 40,
+      "difficulty": null,
+      "hash": "b2bdf7f7e8d02539942682d45d526dae8a7da8e45101d8d84fed15bb9659bdab",
+      "url": null,
+      "size_bytes": 3406
+    },
+    {
+      "id": 231,
+      "type": "complete",
+      "parameters": {
+        "n": 4,
+        "np_problem": "hamiltonian_cycle",
+        "description": "Hamiltonian cycle on K4"
+      },
+      "nodes": 4,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "0e4e68b79c11cc841d08373456ae7e899bcc24297a54c3d83b83c74f9183182b",
+      "url": null,
+      "size_bytes": 877
+    },
+    {
+      "id": 232,
+      "type": "complete",
+      "parameters": {
+        "n": 6,
+        "np_problem": "hamiltonian_cycle",
+        "description": "Hamiltonian cycle on K6"
+      },
+      "nodes": 6,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "ee69f25a97ad9cc68857782c61034415b66d7d2ac72d07097a8291185ec82a29",
+      "url": null,
+      "size_bytes": 1466
+    },
+    {
+      "id": 233,
+      "type": "complete",
+      "parameters": {
+        "n": 8,
+        "np_problem": "hamiltonian_cycle",
+        "description": "Hamiltonian cycle on K8"
+      },
+      "nodes": 8,
+      "edges": 28,
+      "difficulty": null,
+      "hash": "01c99d4b784f7d195eaaf070576a3ddf52d0d919f559e86063957f7e22b2b9a8",
+      "url": null,
+      "size_bytes": 2286
+    },
+    {
+      "id": 234,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 4,
+        "np_problem": "traveling_salesman",
+        "description": "TSP on K4 with random integer edge weights"
+      },
+      "nodes": 4,
+      "edges": 6,
+      "difficulty": null,
+      "hash": "37df03d02c1078110753d3c4ea189920fb0f8f10e38b3e6e9f3caa9e4788e967",
+      "url": null,
+      "size_bytes": 1027
+    },
+    {
+      "id": 235,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 6,
+        "np_problem": "traveling_salesman",
+        "description": "TSP on K6 with random integer edge weights"
+      },
+      "nodes": 6,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "2282b9122e0eb2ef9d602824281f134596557a939ac81988b32933a9948446e4",
+      "url": null,
+      "size_bytes": 1811
+    },
+    {
+      "id": 236,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 10,
+        "np_problem": "traveling_salesman",
+        "description": "TSP on K10 with random integer edge weights"
+      },
+      "nodes": 10,
+      "edges": 45,
+      "difficulty": null,
+      "hash": "3b96cea6bfa4951404ad6d809e160ae16bc0408aec13589720a2a7f37a213c84",
+      "url": null,
+      "size_bytes": 4334
+    },
+    {
+      "id": 237,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 5,
+        "np_problem": "minimal_spanning_tree_degree_constrained",
+        "max_degree": 2,
+        "description": "MST max degree 2 on K5"
+      },
+      "nodes": 5,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "8f0149a236ca43591ea897b14d0f916b9e82fd34d37a5ec9ad2c813a0d475120",
+      "url": null,
+      "size_bytes": 1401
+    },
+    {
+      "id": 238,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 7,
+        "np_problem": "minimal_spanning_tree_degree_constrained",
+        "max_degree": 3,
+        "description": "MST max degree 3 on K7"
+      },
+      "nodes": 7,
+      "edges": 21,
+      "difficulty": null,
+      "hash": "26481291cbbbbfa3e5dfd50a7ec740bde67acf2007240cef253f8e90b0ad3d30",
+      "url": null,
+      "size_bytes": 2341
+    },
+    {
+      "id": 239,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 10,
+        "np_problem": "minimal_spanning_tree_degree_constrained",
+        "max_degree": 3,
+        "description": "MST max degree 3 on K10"
+      },
+      "nodes": 10,
+      "edges": 45,
+      "difficulty": null,
+      "hash": "183c64f9c64080bd7d4957962904bb44fc2b5ef88ca835ee7623594eea7ccaf8",
+      "url": null,
+      "size_bytes": 4346
+    },
+    {
+      "id": 240,
+      "type": "grid",
+      "parameters": {
+        "m": 2,
+        "n": 3,
+        "np_problem": "steiner_tree",
+        "terminal_nodes": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "description": "Steiner tree on 2x3 grid"
+      },
+      "nodes": 6,
+      "edges": 7,
+      "difficulty": null,
+      "hash": "b2678de018f8831008bd4aaeade5522d9135e19c669fe73a70478114bd65d7df",
+      "url": null,
+      "size_bytes": 1075
+    },
+    {
+      "id": 241,
+      "type": "grid",
+      "parameters": {
+        "m": 3,
+        "n": 3,
+        "np_problem": "steiner_tree",
+        "terminal_nodes": [
+          0,
+          2,
+          6,
+          8
+        ],
+        "description": "Steiner tree connecting corners of 3x3 grid"
+      },
+      "nodes": 9,
+      "edges": 12,
+      "difficulty": null,
+      "hash": "0f3daade34fa169a17230101043447177c1954c0399cc0db78245cfff5124319",
+      "url": null,
+      "size_bytes": 1484
+    },
+    {
+      "id": 242,
+      "type": "grid",
+      "parameters": {
+        "m": 4,
+        "n": 4,
+        "np_problem": "steiner_tree",
+        "terminal_nodes": [
+          0,
+          3,
+          6,
+          9,
+          12,
+          15
+        ],
+        "description": "Steiner tree on 4x4 grid with 6 terminals"
+      },
+      "nodes": 16,
+      "edges": 24,
+      "difficulty": null,
+      "hash": "7ccb7cb90deeef9d9a8eec3c14060bd2100084d0986c0c265dd046f9fcb5da06",
+      "url": null,
+      "size_bytes": 2450
+    },
+    {
+      "id": 243,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "directed_feedback_vertex_set",
+        "description": "Small directed graph with one 3-cycle"
+      },
+      "nodes": 4,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "6594212aab55813eabaa0fc607bc3215913ae48253eeffb80194727091e286f1",
+      "url": null,
+      "size_bytes": 773
+    },
+    {
+      "id": 244,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "directed_feedback_vertex_set",
+        "description": "Directed graph with two overlapping cycles"
+      },
+      "nodes": 6,
+      "edges": 7,
+      "difficulty": null,
+      "hash": "cb45659a141652c655b0b846fa1a8f13aa49cd0f93b957bbf48a4ddc71e9e4ff",
+      "url": null,
+      "size_bytes": 1019
+    },
+    {
+      "id": 245,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "directed_feedback_vertex_set",
+        "description": "Directed graph with three distinct cycles"
+      },
+      "nodes": 8,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "f9945af6acec7a5bf3a4eaec6467db35d0072bf5dde67d5d1e749ae1d8e232c3",
+      "url": null,
+      "size_bytes": 1258
+    },
+    {
+      "id": 246,
+      "type": "cycle",
+      "parameters": {
+        "n": 5,
+        "np_problem": "undirected_feedback_vertex_set",
+        "description": "Minimum FVS on 5-cycle"
+      },
+      "nodes": 5,
+      "edges": 5,
+      "difficulty": null,
+      "hash": "ccaa219f1cae6ade7d7fd27b785e8cdf46b4e8596e7db4454d6202832cb11d46",
+      "url": null,
+      "size_bytes": 863
+    },
+    {
+      "id": 247,
+      "type": "petersen",
+      "parameters": {
+        "np_problem": "undirected_feedback_vertex_set",
+        "description": "Minimum FVS on Petersen graph"
+      },
+      "nodes": 10,
+      "edges": 15,
+      "difficulty": null,
+      "hash": "1cb58c93f69baa06efeca352a8241c274f9fe63a5ca794d58fe2902cde338ac3",
+      "url": null,
+      "size_bytes": 1612
+    },
+    {
+      "id": 248,
+      "type": "grid",
+      "parameters": {
+        "m": 4,
+        "n": 4,
+        "np_problem": "undirected_feedback_vertex_set",
+        "description": "Minimum FVS on 4x4 grid"
+      },
+      "nodes": 16,
+      "edges": 24,
+      "difficulty": null,
+      "hash": "375e9fd4249e49a39c277a8ba2f6d92cde843d25386ffa8c84a81b502fb838ba",
+      "url": null,
+      "size_bytes": 2366
+    },
+    {
+      "id": 249,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "feedback_edge_set",
+        "description": "Small: min edges to remove to make acyclic"
+      },
+      "nodes": 4,
+      "edges": 4,
+      "difficulty": null,
+      "hash": "ee832acc3f7cc7143d9aad4b16b7972ab628a2935dff1a3fdfb61cdf64b0a504",
+      "url": null,
+      "size_bytes": 766
+    },
+    {
+      "id": 250,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "feedback_edge_set",
+        "description": "Medium: two cycles sharing an edge"
+      },
+      "nodes": 6,
+      "edges": 8,
+      "difficulty": null,
+      "hash": "23da58796de16d2739dcea8df33432066bf4a73794293295b6d40f52db4ed18c",
+      "url": null,
+      "size_bytes": 1057
+    },
+    {
+      "id": 251,
+      "type": "directed_custom",
+      "parameters": {
+        "np_problem": "feedback_edge_set",
+        "description": "Large: three distinct cycles"
+      },
+      "nodes": 8,
+      "edges": 10,
+      "difficulty": null,
+      "hash": "b892a621c7b781405faaf38d56cbf9a4712a9b510bd3e0c723742baaa44ff919",
+      "url": null,
+      "size_bytes": 1233
+    },
+    {
+      "id": 300,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 20,
+        "np_problem": "traveling_salesman",
+        "description": "TSP on K20 with random integer weights \u2014 hard at this scale"
+      },
+      "nodes": 20,
+      "edges": 190,
+      "difficulty": null,
+      "hash": "ae4b269eac9da9a813f431b608bdf69356f0e985b2c877a1b8526a442479cf5b",
+      "url": null,
+      "size_bytes": 16498
+    },
+    {
+      "id": 301,
+      "type": "complete_weighted",
+      "parameters": {
+        "n": 30,
+        "np_problem": "traveling_salesman",
+        "description": "TSP on K30 with random integer weights \u2014 hard at this scale"
+      },
+      "nodes": 30,
+      "edges": 435,
+      "difficulty": null,
+      "hash": "4b9c905aed85f095ad8127748efb7a21644aae6864d7d785b1684ae69e791b20",
+      "url": null,
+      "size_bytes": 36805
+    },
+    {
+      "id": 302,
+      "type": "sparse_random_planted",
+      "parameters": {
+        "n": 50,
+        "np_problem": "hamiltonian_cycle",
+        "description": "Sparse 50-node graph with planted Hamiltonian cycle \u2014 near threshold"
+      },
+      "nodes": 50,
+      "edges": 143,
+      "difficulty": null,
+      "hash": "3ab05f4ef70976c7ba36f80a6ced83dc819dc12db43a18c2c7c18d0b04928142",
+      "url": null,
+      "size_bytes": 10691
+    },
+    {
+      "id": 303,
+      "type": "sparse_random_planted",
+      "parameters": {
+        "n": 100,
+        "np_problem": "hamiltonian_cycle",
+        "description": "Sparse 100-node graph with planted Hamiltonian cycle \u2014 near threshold"
+      },
+      "nodes": 100,
+      "edges": 390,
+      "difficulty": null,
+      "hash": "7997e18c2e87b8cc3bbbcd62f212fff8e40727f377921a972bb2b93522af35b5",
+      "url": null,
+      "size_bytes": 27192
+    },
+    {
+      "id": 304,
+      "type": "random_phase_transition",
+      "parameters": {
+        "n": 80,
+        "m": 94,
+        "np_problem": "graph_coloring",
+        "num_colors": 3,
+        "description": "3-coloring of 80-node random graph near phase transition (hardest instances)"
+      },
+      "nodes": 80,
+      "edges": 94,
+      "difficulty": null,
+      "hash": "977db5274bbefa8a1f10eefaa0e7dfcc548fa8a511ffe34a067a13a0d5c65b52",
+      "url": null,
+      "size_bytes": 8851
+    },
+    {
+      "id": 305,
+      "type": "random_phase_transition",
+      "parameters": {
+        "n": 100,
+        "m": 259,
+        "np_problem": "graph_coloring",
+        "num_colors": 4,
+        "description": "4-coloring of 100-node random graph near phase transition (hardest instances)"
+      },
+      "nodes": 100,
+      "edges": 259,
+      "difficulty": null,
+      "hash": "e6c787c3ca5d285fe2206ea5f4e1c0ba64bcca6ebb2b06501a2c6301b0229652",
+      "url": null,
+      "size_bytes": 19422
+    },
+    {
+      "id": 306,
+      "type": "random_planted_clique",
+      "parameters": {
+        "n": 100,
+        "planted_clique_size": 8,
+        "background_density": 0.3,
+        "np_problem": "clique",
+        "clique_size_k": 8,
+        "description": "Find planted clique of size 8 in 100-node random graph (p=0.3) \u2014 hard instance"
+      },
+      "nodes": 100,
+      "edges": 1455,
+      "difficulty": null,
+      "hash": "316889906afe27130d17912451277256acbe3015c2d7e4b2c6c1077c2b4370b6",
+      "url": null,
+      "size_bytes": 90912
+    },
+    {
+      "id": 307,
+      "type": "random_planted_clique",
+      "parameters": {
+        "n": 150,
+        "planted_clique_size": 10,
+        "background_density": 0.25,
+        "np_problem": "clique",
+        "clique_size_k": 10,
+        "description": "Find planted clique of size 10 in 150-node random graph (p=0.25) \u2014 hard instance"
+      },
+      "nodes": 150,
+      "edges": 2794,
+      "difficulty": null,
+      "hash": "bfecae7470b43ac2435d4feb38e6ba9b0224472d8b9437421cdb4b30698c2a58",
+      "url": null,
+      "size_bytes": 174750
+    },
+    {
+      "id": 308,
+      "type": "3sat_mis_reduction_phase_transition",
+      "parameters": {
+        "num_variables": 30,
+        "num_clauses": 128,
+        "clause_ratio": 4.27,
+        "np_problem": "satisfiability",
+        "description": "3SAT with 30 variables at phase transition ratio 4.27 \u2014 hardest instances"
+      },
+      "nodes": 384,
+      "edges": 1592,
+      "difficulty": null,
+      "hash": "651a3606dfceb39714be92e52b329e6ced993f1f0e70eac11065537c661ff46e",
+      "url": null,
+      "size_bytes": 111647
+    },
+    {
+      "id": 309,
+      "type": "3sat_mis_reduction_phase_transition",
+      "parameters": {
+        "num_variables": 50,
+        "num_clauses": 213,
+        "clause_ratio": 4.27,
+        "np_problem": "satisfiability",
+        "description": "3SAT with 50 variables at phase transition ratio 4.27 \u2014 hardest instances"
+      },
+      "nodes": 639,
+      "edges": 2613,
+      "difficulty": null,
+      "hash": "e2f05eb10470bda70b4b5b245f4446a695fdbe2d09621f569cd6d973a971d369",
+      "url": null,
+      "size_bytes": 183924
+    },
+    {
+      "id": 310,
+      "type": "planted_partition",
+      "parameters": {
+        "n": 100,
+        "np_problem": "graph_partitioning",
+        "num_communities": 4,
+        "description": "Partition 100-node graph with planted community structure \u2014 non-trivial min cut"
+      },
+      "nodes": 100,
+      "edges": 1188,
+      "difficulty": null,
+      "hash": "589a02dcfbf415e91ac44188cc1bc7c7629e6dd411a812cca480d9ebc619c849",
+      "url": null,
+      "size_bytes": 74929
+    },
+    {
+      "id": 311,
+      "type": "planted_partition",
+      "parameters": {
+        "n": 200,
+        "np_problem": "graph_partitioning",
+        "num_communities": 4,
+        "description": "Partition 200-node graph with planted community structure \u2014 non-trivial min cut"
+      },
+      "nodes": 200,
+      "edges": 4932,
+      "difficulty": null,
+      "hash": "ef5e322ffb3a6812ba909dd46958ecb2fcb54070667689cc5a61d30e6b51a229",
+      "url": null,
+      "size_bytes": 307794
+    },
+    {
+      "id": 312,
+      "type": "random",
+      "parameters": {
+        "n": 100,
+        "m": 200,
+        "np_problem": "vertex_cover",
+        "description": "Minimum vertex cover on 100-node random graph"
+      },
+      "nodes": 100,
+      "edges": 200,
+      "difficulty": null,
+      "hash": "680caa33e20d88c0139594b6d1f99392f416757053cbaa5e52ad8b0281c54a03",
+      "url": null,
+      "size_bytes": 15793
+    },
+    {
+      "id": 313,
+      "type": "random",
+      "parameters": {
+        "n": 150,
+        "m": 350,
+        "np_problem": "vertex_cover",
+        "description": "Minimum vertex cover on 150-node random graph"
+      },
+      "nodes": 150,
+      "edges": 350,
+      "difficulty": null,
+      "hash": "b6f8a3fa8efedeefa2f454145f37a174070ab4378825d9fcd867d5963cf4df14",
+      "url": null,
+      "size_bytes": 26777
+    },
+    {
+      "id": 314,
+      "type": "complete",
+      "parameters": {
+        "n": 50,
+        "np_problem": "knapsack",
+        "weights": [
+          18,
+          7,
+          3,
+          19,
+          15,
+          1,
+          6,
+          11,
+          2,
+          5,
+          19,
+          2,
+          3,
+          18,
+          16,
+          18,
+          1,
+          7,
+          18,
+          2,
+          4,
+          16,
+          5,
+          9,
+          15,
+          20,
+          18,
+          15,
+          6,
+          15,
+          18,
+          3,
+          1,
+          19,
+          5,
+          5,
+          17,
+          9,
+          19,
+          14,
+          7,
+          16,
+          6,
+          17,
+          18,
+          9,
+          15,
+          4,
+          3,
+          20
+        ],
+        "values": [
+          17,
+          9,
+          0,
+          16,
+          15,
+          3,
+          9,
+          10,
+          3,
+          11,
+          28,
+          6,
+          9,
+          21,
+          18,
+          27,
+          5,
+          14,
+          27,
+          -1,
+          4,
+          21,
+          6,
+          6,
+          23,
+          25,
+          18,
+          15,
+          12,
+          16,
+          15,
+          8,
+          -2,
+          25,
+          4,
+          14,
+          18,
+          10,
+          24,
+          24,
+          16,
+          20,
+          16,
+          16,
+          16,
+          10,
+          16,
+          8,
+          10,
+          24
+        ],
+        "capacity": 100,
+        "correlation": "weight_correlated",
+        "description": "Correlated knapsack with 50 items \u2014 harder than random instances"
+      },
+      "nodes": 50,
+      "edges": 1225,
+      "difficulty": null,
+      "hash": "3462d9215d1f8776441d7aeb2aa45c5e5f0b4e4b77ddab337f3bc5ce20939850",
+      "url": null,
+      "size_bytes": 76209
+    },
+    {
+      "id": 315,
+      "type": "complete",
+      "parameters": {
+        "n": 100,
+        "np_problem": "knapsack",
+        "weights": [
+          2,
+          11,
+          16,
+          18,
+          19,
+          14,
+          8,
+          18,
+          7,
+          15,
+          19,
+          8,
+          5,
+          10,
+          12,
+          8,
+          2,
+          10,
+          20,
+          8,
+          2,
+          14,
+          8,
+          5,
+          15,
+          19,
+          1,
+          1,
+          3,
+          18,
+          14,
+          18,
+          1,
+          3,
+          10,
+          13,
+          19,
+          12,
+          16,
+          12,
+          8,
+          1,
+          16,
+          17,
+          20,
+          19,
+          6,
+          19,
+          2,
+          14,
+          17,
+          13,
+          9,
+          16,
+          5,
+          7,
+          13,
+          20,
+          3,
+          9,
+          2,
+          10,
+          20,
+          10,
+          4,
+          20,
+          8,
+          9,
+          4,
+          2,
+          17,
+          11,
+          1,
+          2,
+          17,
+          9,
+          10,
+          13,
+          5,
+          10,
+          7,
+          3,
+          15,
+          2,
+          15,
+          1,
+          19,
+          6,
+          13,
+          16,
+          7,
+          12,
+          6,
+          12,
+          12,
+          1,
+          1,
+          10,
+          13,
+          15
+        ],
+        "values": [
+          9,
+          12,
+          23,
+          23,
+          16,
+          20,
+          9,
+          15,
+          11,
+          13,
+          23,
+          17,
+          5,
+          16,
+          17,
+          14,
+          5,
+          11,
+          27,
+          9,
+          5,
+          15,
+          6,
+          10,
+          21,
+          29,
+          10,
+          9,
+          4,
+          18,
+          17,
+          21,
+          1,
+          10,
+          20,
+          15,
+          20,
+          19,
+          24,
+          19,
+          11,
+          6,
+          14,
+          15,
+          26,
+          20,
+          11,
+          23,
+          3,
+          11,
+          14,
+          19,
+          8,
+          13,
+          2,
+          8,
+          19,
+          22,
+          6,
+          16,
+          10,
+          14,
+          25,
+          12,
+          4,
+          25,
+          8,
+          13,
+          12,
+          6,
+          17,
+          21,
+          -2,
+          11,
+          14,
+          8,
+          10,
+          11,
+          8,
+          8,
+          6,
+          3,
+          21,
+          11,
+          17,
+          0,
+          21,
+          16,
+          11,
+          13,
+          10,
+          11,
+          14,
+          14,
+          9,
+          0,
+          7,
+          16,
+          16,
+          19
+        ],
+        "capacity": 200,
+        "correlation": "weight_correlated",
+        "description": "Correlated knapsack with 100 items \u2014 harder than random instances"
+      },
+      "nodes": 100,
+      "edges": 4950,
+      "difficulty": null,
+      "hash": "b8455197a3d3b0163cdc4d103b1a6a47b01bbbeb0ce4a14112874ebb7c311476",
+      "url": null,
+      "size_bytes": 301880
+    },
+    {
+      "id": 316,
+      "type": "grid",
+      "parameters": {
+        "m": 8,
+        "n": 8,
+        "np_problem": "steiner_tree",
+        "terminal_nodes": [
+          34,
+          43,
+          33,
+          3,
+          15,
+          42,
+          10,
+          38,
+          22,
+          54,
+          7,
+          12
+        ],
+        "description": "Steiner tree on 8x8 grid with 12 scattered terminals"
+      },
+      "nodes": 64,
+      "edges": 112,
+      "difficulty": null,
+      "hash": "ad062024035efa707b174a1ea6d6fa12d1a962ccc8dee053d851e6231f92677f",
+      "url": null,
+      "size_bytes": 9453
+    },
+    {
+      "id": 317,
+      "type": "grid",
+      "parameters": {
+        "m": 10,
+        "n": 10,
+        "np_problem": "steiner_tree",
+        "terminal_nodes": [
+          42,
+          78,
+          1,
+          58,
+          43,
+          29,
+          91,
+          77,
+          79,
+          76,
+          54,
+          9,
+          84,
+          86,
+          52,
+          19,
+          10,
+          93,
+          37,
+          92
+        ],
+        "description": "Steiner tree on 10x10 grid with 20 scattered terminals"
+      },
+      "nodes": 100,
+      "edges": 180,
+      "difficulty": null,
+      "hash": "e06f6db995169dc645498475c65fb184e053b070db712b95cca0df7944cbfe66",
+      "url": null,
+      "size_bytes": 14845
+    },
+    {
+      "id": 318,
+      "type": "directed_random",
+      "parameters": {
+        "n": 60,
+        "m": 120,
+        "np_problem": "directed_feedback_vertex_set",
+        "description": "Directed FVS on 60-node random directed graph with many cycles"
+      },
+      "nodes": 60,
+      "edges": 120,
+      "difficulty": null,
+      "hash": "ac4438e378d28034816279e16f45486951e0d79d6959849824f4cc7a15f02b32",
+      "url": null,
+      "size_bytes": 9660
+    },
+    {
+      "id": 319,
+      "type": "directed_random",
+      "parameters": {
+        "n": 100,
+        "m": 200,
+        "np_problem": "directed_feedback_vertex_set",
+        "description": "Directed FVS on 100-node random directed graph with many cycles"
+      },
+      "nodes": 100,
+      "edges": 200,
+      "difficulty": null,
+      "hash": "dc9aafb42649955e0747bbcfcc415dbc48f2df3a787ea11d8b4b5c838b8ae5da",
+      "url": null,
+      "size_bytes": 15828
+    },
+    {
+      "id": 320,
+      "type": "random",
+      "parameters": {
+        "n": 80,
+        "m": 160,
+        "np_problem": "undirected_feedback_vertex_set",
+        "description": "Undirected FVS on 80-node random graph"
+      },
+      "nodes": 80,
+      "edges": 160,
+      "difficulty": null,
+      "hash": "da130499a4ae8e2e2d06cc408239cb94756003bf8c058e89dd3bbc3e8ba3332d",
+      "url": null,
+      "size_bytes": 12715
+    },
+    {
+      "id": 321,
+      "type": "random",
+      "parameters": {
+        "n": 150,
+        "m": 300,
+        "np_problem": "undirected_feedback_vertex_set",
+        "description": "Undirected FVS on 150-node random graph"
+      },
+      "nodes": 150,
+      "edges": 300,
+      "difficulty": null,
+      "hash": "28d17e257e299b3e141ef892489eeb2addb116a35daf3bfd2d533d300bb30c48",
+      "url": null,
+      "size_bytes": 23757
+    },
+    {
+      "id": 322,
+      "type": "directed_random",
+      "parameters": {
+        "n": 60,
+        "m": 120,
+        "np_problem": "feedback_edge_set",
+        "description": "Feedback edge set on 60-node random directed graph"
+      },
+      "nodes": 60,
+      "edges": 120,
+      "difficulty": null,
+      "hash": "2ac769872055b4ae86360a2381b7d44906721c8c9d9c74f7493e812ed83cc1f6",
+      "url": null,
+      "size_bytes": 9645
+    },
+    {
+      "id": 323,
+      "type": "directed_random",
+      "parameters": {
+        "n": 100,
+        "m": 200,
+        "np_problem": "feedback_edge_set",
+        "description": "Feedback edge set on 100-node random directed graph"
+      },
+      "nodes": 100,
+      "edges": 200,
+      "difficulty": null,
+      "hash": "3ce6d50a5d263eea36d11647ddaffd4ae600a3c8501f88452415a3b872580b8e",
+      "url": null,
+      "size_bytes": 15814
+    }
+  ]
+}
