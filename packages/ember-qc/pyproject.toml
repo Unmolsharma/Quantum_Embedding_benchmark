@@ -32,12 +32,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Operating System :: OS Independent",
 ]
-
-[project.urls]
-Homepage = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark"
-Repository = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark"
-"Bug Tracker" = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark/issues"
-
 dependencies = [
     "numpy>=1.20.0",
     "pandas>=1.3.0",
@@ -48,6 +42,11 @@ dependencies = [
     "platformdirs>=3.0.0",
     "pyyaml>=6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark"
+Repository = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark"
+"Bug Tracker" = "https://github.com/Unmolsharma/Quantum_Embedding_benchmark/issues"
 
 [project.optional-dependencies]
 # Pulls in the companion analysis package and its plotting dependencies
